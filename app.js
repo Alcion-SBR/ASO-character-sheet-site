@@ -481,3 +481,77 @@ function wireframeWeaponEditor() {
   const body = '<div class="table-wrap"><table class="weapon-table"><thead><tr><th>#</th><th>武装</th><th>種別</th><th>威力</th><th>射程</th><th>消費</th><th>重量</th><th>価格</th><th>特性</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
   return section("武装", body, { meta: "選択した性能を行内へ反映" });
 }
+
+function wireframeIdentity(result) {
+  const pilot = state.meta.pilotName || "未入力";
+  const machine = state.meta.machineName || "機体名未設定";
+  const classesText = "出自: " + result.origin.name + " / メイン: " + (result.mainClass?.name ?? "未選択") + " / サブ: " + (result.subClass?.name ?? "未選択");
+  return '<section class="sheet-identity edit-identity"><div class="portrait-slot" aria-label="A.K.識別枠">A.K.</div><div class="identity-copy"><p class="eyebrow">パイロット</p><h2>' + escapeHtml(pilot) + '</h2><p class="machine-name">' + escapeHtml(machine) + '</p><p class="identity-detail">' + escapeHtml(classesText) + '</p></div></section>';
+}
+
+function wireframeStat(label, value, detail, tone = "") {
+  return '<div class="inline-stat"><dt>' + label + '</dt><dd class="' + tone + '">' + value + '</dd><small>' + detail + '</small></div>';
+}
+
+function wireframeStats(result) {
+  const stats = result.stats;
+  const cards = [
+    wireframeStat("AP", stats.ap, "30 " + wireframeSigned(result.statAdjustments.ap)),
+    wireframeStat("行動値", stats.action, "5 " + wireframeSigned(result.statAdjustments.action)),
+    wireframeStat("命中", stats.hit, "6 " + wireframeSigned(result.statAdjustments.hit)),
+    wireframeStat("回避", stats.evade, "7 " + wireframeSigned(result.statAdjustments.evade)),
+    wireframeStat("出力", stats.output, "4 " + wireframeSigned(result.statAdjustments.output) + " / 回復 " + result.outputRecovery),
+    wireframeStat("装甲", stats.armor, "0 " + wireframeSigned(stats.armor)),
+    wireframeStat("残積載", result.remainingLoad, result.totalWeight + " / " + stats.load, result.remainingLoad < 0 ? "negative" : "teal"),
+    wireframeStat("残金", result.remainingCredits + "C", "購入 " + result.totalCost + "C", result.remainingCredits < 0 ? "negative" : "teal"),
+  ];
+  return '<dl class="inline-stats">' + cards.join("") + '</dl>';
+}
+
+function wireframePersonalClassEditor() {
+  const classChoices = [{ value: "", label: "選択してください" }, ...classes.map((item) => ({ value: item.id, label: item.name }))];
+  const passive = techniqueOptions("パッシブ");
+  const active = techniqueOptions("アクティブ");
+  const originControl = state.origin === "human"
+    ? selectField("人間の補正", "humanBonus", state.humanBonus, [{ value: "hit", label: "命中+1" }, { value: "evade", label: "回避+1" }])
+    : '<div class="field muted-field"><span>出自補正</span><b>行動値+1 / 出力+2</b></div>';
+  const vanguardControl = state.classes.main === "vanguard"
+    ? selectField("ヴァンガード補正", "classes.vanguardBonus", state.classes.vanguardBonus, [{ value: "evade", label: "回避+1" }, { value: "armor", label: "装甲+1" }])
+    : "";
+  const body = '<div class="form-grid identity-form">' +
+    field("パイロット名", "meta.pilotName", state.meta.pilotName, { placeholder: "例: ジョン・ドゥ" }) +
+    field("機体名", "meta.machineName", state.meta.machineName, { placeholder: "例: UNKNOWN:LUCK" }) +
+    field("プレイヤー名", "meta.playerName", state.meta.playerName) +
+    selectField("出自", "origin", state.origin, origins.map((item) => ({ value: item.id, label: item.name }))) +
+    originControl +
+    selectField("メインクラス", "classes.main", state.classes.main, classChoices) +
+    selectField("サブクラス", "classes.sub", state.classes.sub, classChoices) +
+    vanguardControl +
+    field("メモ", "meta.memo", state.meta.memo, { type: "textarea", rows: 3, wide: true }) +
+    '</div><div class="technique-grid">' +
+    techniqueSelect("パッシブ技巧", "techniques.passive", state.techniques.passive, passive) +
+    techniqueSelect("アクティブ技巧 1", "techniques.active.0", state.techniques.active[0], active) +
+    techniqueSelect("アクティブ技巧 2", "techniques.active.1", state.techniques.active[1], active) +
+    techniqueChoiceInputs() +
+    '</div>';
+  return section("パーソナルデータ・クラス", body, { meta: "入力内容は自動保存" });
+}
+
+function wireframeConfirmation(result) {
+  const message = result.warnings.length
+    ? '<ul>' + result.warnings.map((warning) => '<li><b>' + escapeHtml(warning.title) + '</b><span>' + escapeHtml(warning.detail) + '</span></li>').join("") + '</ul>'
+    : '<span>判定上の警告はありません。</span>';
+  const stateClass = result.warnings.length ? "notice warning-notice" : "notice";
+  return '<section class="editor-section confirmation-section"><div class="' + stateClass + '"><strong>確認事項</strong><div>' + message + '</div></div></section>';
+}
+
+function wireframeRenderEdit(result) {
+  return '<main class="app-layout wireframe-layout">' + wireframeIdentity(result) + wireframeStats(result) + '<div class="editor-column">' + wireframePersonalClassEditor() + wireframePartsEditor() + wireframeWeaponEditor() + consumableEditor() + wireframeConfirmation(result) + '</div></main>';
+}
+
+combo = wireframeCombo;
+partsEditor = wireframePartsEditor;
+weaponEditor = wireframeWeaponEditor;
+classEditor = wireframePersonalClassEditor;
+renderEdit = wireframeRenderEdit;
+render();
