@@ -33,7 +33,7 @@ export function createDefaultState() {
     classes: { main: "", sub: "", vanguardBonus: "evade" },
     parts: Object.fromEntries(PART_SLOTS.map((slot) => [slot, { id: "", custom: customPart() }])),
     weapons: Array.from({ length: 4 }, () => ({ id: "", custom: customWeapon() })),
-    consumables: Array.from({ length: 4 }, () => ({ id: "", custom: customConsumable() })),
+    consumables: [{ id: "", custom: customConsumable() }],
     techniques: { passive: "", active: ["", ""], choices: {} },
   };
 }
@@ -56,8 +56,10 @@ export function hydrateState(candidate) {
     const source = candidate.weapons?.[index] ?? {};
     return { id: typeof source.id === "string" ? source.id : "", custom: { ...customWeapon(), ...(source.custom ?? {}) } };
   });
-  state.consumables = Array.from({ length: 4 }, (_, index) => {
-    const source = candidate.consumables?.[index] ?? {};
+  const consumableSources = Array.isArray(candidate.consumables)
+    ? candidate.consumables.filter((entry) => entry?.id || Object.values(entry?.custom ?? {}).some((value) => String(value ?? "").trim()))
+    : base.consumables;
+  state.consumables = (consumableSources.length ? consumableSources : base.consumables).map((source) => {
     return { id: typeof source.id === "string" ? source.id : "", custom: { ...customConsumable(), ...(source.custom ?? {}) } };
   });
   state.techniques = { ...base.techniques, ...(candidate.techniques ?? {}), choices: { ...(candidate.techniques?.choices ?? {}) } };
@@ -200,8 +202,8 @@ export function calculate(state) {
   for (const item of equippedWeapons) categoryCounts[item.category] = (categoryCounts[item.category] ?? 0) + 1;
   const lightLike = categoryCounts.light + categoryCounts.melee;
   const heavyLike = categoryCounts.heavy + categoryCounts.special;
-  const reducedLight = equippedWeapons.reduce((count, item) => count + (item.flags?.includes("reduces-light") ? 1 : 0), 0);
-  const limits = { total: 4, light: 4 - reducedLight, heavy: 2, melee: 1, special: 1 };
+  const reducedWeaponSlots = equippedWeapons.reduce((count, item) => count + (item.flags?.includes("reduces-light") ? 1 : 0), 0);
+  const limits = { total: 4 - reducedWeaponSlots, light: 4, heavy: 2, melee: 1, special: 1 };
   const totalWeight = equippedWeapons.reduce((sum, item) => sum + (item.weight ?? 0), 0);
   const hasUnknownWeight = equippedWeapons.some((item) => item.weight === null);
   const remainingLoad = stats.load - totalWeight;
@@ -219,7 +221,13 @@ export function calculate(state) {
 
   if (mainClass && subClass && mainClass.id === subClass.id) addWarning(warnings, "same-class", "メインとサブが同一クラス", "同一クラス選択の可否は製作者未確認です。現状は保存できます。 ");
   for (const slot of PART_SLOTS) if (!resolvedParts[slot]) addWarning(warnings, `missing-${slot}`, "未選択の構成パーツ", `${SLOT_LABELS[slot]}を選択またはカスタム入力してください。`);
-  if (equippedWeapons.length > 4) addWarning(warnings, "weapon-total", "武装枠超過", "武装は4枠までです。");
+  if (equippedWeapons.length > limits.total) {
+    const restrictedNames = equippedWeapons.filter((item) => item.flags?.includes("reduces-light")).map((item) => `「${item.name}」`).join("、");
+    const detail = restrictedNames
+      ? `${restrictedNames}は背部特殊武装の枠に加え、軽量武装を装備不可にするぶんの1枠も消費します。武装枠は${limits.total}枠までです。`
+      : "武装は4枠までです。";
+    addWarning(warnings, "weapon-total", "武装枠超過", detail);
+  }
   if (lightLike > limits.light) addWarning(warnings, "weapon-light", "軽量武装枠超過", `軽量武装扱いは${limits.light}枠までです。近接武装も軽量武装として数えます。`);
   if (heavyLike > limits.heavy) addWarning(warnings, "weapon-heavy", "重量武装枠超過", `重量武装扱いは${limits.heavy}枠までです。背部特殊武装も重量武装として数えます。`);
   if (categoryCounts.melee > limits.melee) addWarning(warnings, "weapon-melee", "近接武装枠超過", "近接武装は1つまでです。");

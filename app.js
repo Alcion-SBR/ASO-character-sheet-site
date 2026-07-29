@@ -12,7 +12,7 @@ import {
   origins,
   parts,
   weapons,
-} from "./data.js";
+} from "./data.js?v=20260730-weapon-slots";
 import { buildStandaloneHtml } from "./exporter.js";
 import { buildCocofoliaCharacter } from "./cocofolia.js";
 import {
@@ -22,7 +22,15 @@ import {
   exportFilename,
   hydrateState,
   searchText,
-} from "./logic.js";
+} from "./logic.js?v=20260730-weapon-slots";
+import {
+  clearStoredImages,
+  getEmbeddedImages,
+  getStoredImages,
+  imageRecordToUrl,
+  removeStoredImage,
+  saveStoredImage,
+} from "./media.js";
 
 const app = document.querySelector("#app");
 const importInput = document.querySelector("#json-import");
@@ -30,6 +38,9 @@ const STORAGE_KEY = "aso-character-sheet-draft-v1";
 let mode = "edit";
 let exportFormat = "json";
 let state = loadDraft();
+let isImageFlipped = false;
+const imageRecords = { machine: null, pilot: null };
+const imageUrls = { machine: "", pilot: "" };
 
 function loadDraft() {
   try {
@@ -45,6 +56,48 @@ function saveDraft() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   const indicator = document.querySelector("#save-indicator");
   if (indicator) indicator.textContent = "下書き保存済み";
+}
+
+function setImageRecord(slot, record) {
+  if (imageUrls[slot]) URL.revokeObjectURL(imageUrls[slot]);
+  imageRecords[slot] = record ?? null;
+  imageUrls[slot] = imageRecordToUrl(record);
+}
+
+function resetImageState() {
+  setImageRecord("machine", null);
+  setImageRecord("pilot", null);
+  isImageFlipped = false;
+}
+
+async function loadStoredImages() {
+  try {
+    const storedImages = await getStoredImages();
+    setImageRecord("machine", storedImages.machine);
+    setImageRecord("pilot", storedImages.pilot);
+    render();
+  } catch {
+    resetImageState();
+  }
+}
+
+async function replaceImage(slot, file) {
+  const record = await saveStoredImage(slot, file);
+  setImageRecord(slot, record);
+  isImageFlipped = false;
+  render();
+}
+
+async function removeImage(slot) {
+  await removeStoredImage(slot);
+  setImageRecord(slot, null);
+  isImageFlipped = false;
+  render();
+}
+
+async function removeAllImages() {
+  await clearStoredImages();
+  resetImageState();
 }
 
 function escapeHtml(value = "") {
@@ -154,9 +207,9 @@ function techniqueOptions(kind) {
   return [...main, ...sub].filter((item) => item.timing === kind || (kind === "アクティブ" && item.timing !== "パッシブ")).filter((item) => !ids.has(item.id) && ids.add(item.id));
 }
 
-function techniqueSelect(label, path, value, candidates) {
+function techniqueSelect(label, path, value, candidates, options = {}) {
   const choices = [{ value: "", label: "選択してください" }, ...candidates.map((item) => ({ value: item.id, label: `【${item.timing}】${item.name}` }))];
-  return selectField(label, path, value, choices, { wide: true });
+  return selectField(label, path, value, choices, { wide: options.wide ?? true });
 }
 
 function techniqueChoiceInputs() {
@@ -193,8 +246,9 @@ function consumableInfo(index) {
 }
 
 function consumableEditor() {
-  const body = `<div class="consumable-grid">${state.consumables.map((_, index) => `<div class="consumable-row">${combo({ kind: "consumable", key: String(index), value: consumableDisplay(index), label: `所持アイテム ${index + 1}`, placeholder: "アイテム名で検索", entries: consumables })}${consumableInfo(index)}<button type="button" class="remove-row" data-action="clear-consumable" data-index="${index}" title="このアイテム枠を空にする" aria-label="このアイテム枠を空にする">×</button></div>`).join("")}</div>`;
-  return section("消耗品", body, { meta: "4枠" });
+  const rows = state.consumables.map((_, index) => `<div class="consumable-row">${combo({ kind: "consumable", key: String(index), value: consumableDisplay(index), label: `所持アイテム ${index + 1}`, placeholder: "アイテム名で検索", entries: consumables })}${consumableInfo(index)}<button type="button" class="remove-row" data-action="remove-consumable" data-index="${index}" title="このアイテムを外す" aria-label="所持アイテム ${index + 1} を外す">×</button></div>`).join("");
+  const body = `<div class="consumable-grid">${rows}</div><div class="consumable-actions"><button type="button" class="secondary-button consumable-add-button" data-action="add-consumable">＋ アイテムを追加</button></div>`;
+  return section("消耗品", body, { meta: "所持枠なし / 残金内で購入" });
 }
 
 function statCard(label, base, modifier, total, note = "") {
@@ -228,6 +282,19 @@ function renderEdit(result) {
 function viewHeader(title, detail = "") { return `<div class="view-section-heading"><h2>${title}</h2>${detail ? `<span>${detail}</span>` : ""}</div>`; }
 function viewPartRows(result) { return Object.entries(result.parts).map(([slot, item]) => `<tr><th>${SLOT_LABELS[slot]}</th><td>${item ? `『${escapeHtml(item.name)}』` : "未選択"}</td><td>${escapeHtml(item?.company ?? "-")}</td><td>${item ? escapeHtml(formatPartInfo(item)) : "-"}</td></tr>`).join(""); }
 function viewWeaponRows(result) { return result.weapons.map((item, index) => `<tr><th>${index + 1}</th><td>${item ? `${escapeHtml(CATEGORY_LABELS[item.category])} / 【${escapeHtml(item.type)}】『${escapeHtml(item.name)}』` : "未選択"}</td><td>${item ? `${escapeHtml(item.attribute)} / ${escapeHtml(item.range)}` : "-"}</td><td>${item ? `${escapeHtml(item.power)}${item.damageBonus ? ` + ${item.damageBonus}` : ""} / 出力${item.output ?? "-"} / 重量${item.weight ?? "-"}` : "-"}</td></tr>`).join(""); }
+
+function imageFlipViewer() {
+  const machineImage = imageUrls.machine;
+  const pilotImage = imageUrls.pilot;
+  const frontImage = machineImage || pilotImage;
+  if (!frontImage) return "";
+  const hasPair = Boolean(machineImage && pilotImage);
+  const frontLabel = machineImage ? "機体" : "パイロット";
+  const frontFace = '<div class="image-flip-face image-flip-front"><img src="' + escapeHtml(frontImage) + '" alt="' + frontLabel + '画像"><span>' + frontLabel + '</span></div>';
+  const backFace = hasPair ? '<div class="image-flip-face image-flip-back"><img src="' + escapeHtml(pilotImage) + '" alt="パイロット画像"><span>パイロット</span></div>' : "";
+  const toggle = hasPair ? '<button type="button" class="image-flip-toggle" data-action="flip-images" aria-pressed="' + String(isImageFlipped) + '">切り替え</button>' : "";
+  return '<section class="view-image-stage"><div class="image-flip-card' + (isImageFlipped ? " is-flipped" : "") + '"><div class="image-flip-inner">' + frontFace + backFace + '</div></div>' + toggle + '</section>';
+}
 
 function renderView(result) {
   const techniqueCards = [...result.origin.techniques, ...result.selectedClassTechniques].map((item) => {
@@ -298,6 +365,15 @@ function bindEvents() {
     input.addEventListener("blur", () => window.setTimeout(() => input.closest(".combo-wrap")?.classList.remove("is-open"), 120));
   });
   document.querySelectorAll("[data-export-format]").forEach((select) => select.addEventListener("change", () => { exportFormat = select.value; render(); }));
+  document.querySelectorAll("[data-image-upload]").forEach((input) => input.addEventListener("change", async () => {
+    const [file] = input.files ?? [];
+    if (!file) return;
+    try {
+      await replaceImage(input.dataset.imageUpload, file);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "画像を保存できませんでした。");
+    }
+  }));
   document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", handleAction));
 }
 
@@ -365,31 +441,55 @@ function exportTemplate() {
   downloadFile(`\uFEFF${buildSheetText(state)}`, "text/plain;charset=utf-8", sharedFilename("txt"));
 }
 
-function exportHtml() {
+async function exportHtml() {
   const sheetText = buildSheetText(state);
   const title = state.meta.pilotName.trim() || state.meta.machineName.trim() || "無名パイロット";
-  downloadFile(buildStandaloneHtml({ title, sheetText }), "text/html;charset=utf-8", sharedFilename("html"));
+  const images = await getEmbeddedImages();
+  downloadFile(buildStandaloneHtml({ title, sheetText, images }), "text/html;charset=utf-8", sharedFilename("html"));
 }
 
-function exportSelected() {
+async function exportSelected() {
   if (exportFormat === "cocofolia") { copyCocofoliaJson(); return; }
   if (exportFormat === "template") { exportTemplate(); return; }
-  if (exportFormat === "html") { exportHtml(); return; }
+  if (exportFormat === "html") {
+    try {
+      await exportHtml();
+    } catch {
+      window.alert("共有用HTMLへ画像を埋め込めませんでした。");
+    }
+    return;
+  }
   exportJson();
 }
 
-function handleAction(event) {
+async function handleAction(event) {
   const button = event.currentTarget;
   const action = button.dataset.action;
   if (action === "switch-mode") { mode = button.dataset.mode; render(); return; }
+  if (action === "flip-images") { isImageFlipped = !isImageFlipped; render(); return; }
   if (action.startsWith("choose-")) { selectCombo(action.replace("choose-", ""), button.dataset.key, button.dataset.id); return; }
   if (action === "clear-weapon") { state.weapons[Number(button.dataset.index)] = createDefaultState().weapons[0]; saveDraft(); render(); return; }
-  if (action === "clear-consumable") { state.consumables[Number(button.dataset.index)] = createDefaultState().consumables[0]; saveDraft(); render(); return; }
+  if (action === "add-consumable") { state.consumables.push(createDefaultState().consumables[0]); saveDraft(); render(); return; }
+  if (action === "remove-consumable") { state.consumables.splice(Number(button.dataset.index), 1); saveDraft(); render(); return; }
+  if (action === "remove-image") {
+    try {
+      await removeImage(button.dataset.imageSlot);
+    } catch {
+      window.alert("画像を削除できませんでした。");
+    }
+    return;
+  }
   if (action === "copy-text") { copyText(); return; }
-  if (action === "export-selected") { exportSelected(); return; }
+  if (action === "export-selected") { await exportSelected(); return; }
   if (action === "import-json") { importInput.click(); return; }
   if (action === "new-sheet") {
-    if (window.confirm("現在の下書きを新しい空のシートに置き換えます。JSONを書き出していない内容は戻せません。続けますか？")) { state = createDefaultState(); saveDraft(); mode = "edit"; render(); }
+    if (window.confirm("現在の下書きを新しい空のシートに置き換えます。JSONを書き出していない内容は戻せません。続けますか？")) {
+      state = createDefaultState();
+      try { await removeAllImages(); } catch { resetImageState(); }
+      saveDraft();
+      mode = "edit";
+      render();
+    }
   }
 }
 
@@ -398,6 +498,7 @@ importInput.addEventListener("change", async () => {
   if (!file) return;
   try {
     state = hydrateState(JSON.parse(await file.text()));
+    try { await removeAllImages(); } catch { resetImageState(); }
     saveDraft();
     mode = "edit";
     render();
@@ -476,10 +577,15 @@ function wireframeWeaponRow(index) {
   return '<tr><th scope="row">' + (index + 1) + '</th><td class="weapon-name">' + wireframeCombo({ kind: "weapon", key: String(index), value: weaponDisplay(index), label: "武装 " + (index + 1), placeholder: "武装名を検索", entries: weapons, compact: true }) + customDetails + '</td><td class="compact">' + escapeHtml(type) + '</td><td class="number">' + escapeHtml(power) + '</td><td>' + escapeHtml(wireframeValue(item?.range ?? custom.range)) + '</td><td>' + escapeHtml(wireframeValue(item?.output ?? custom.output)) + '</td><td>' + escapeHtml(wireframeValue(item?.weight ?? custom.weight)) + '</td><td class="number">' + escapeHtml(wireframePrice(item?.price ?? custom.price)) + '</td><td class="traits">' + escapeHtml(traits) + '</td><td><button type="button" class="remove-row table-remove" data-action="clear-weapon" data-index="' + index + '" title="この武装枠を空にする" aria-label="武装 ' + (index + 1) + ' を外す">×</button></td></tr>';
 }
 
-function wireframeWeaponEditor() {
+function wireframeWeaponEditor(result = calculate(state)) {
   const rows = state.weapons.map((_, index) => wireframeWeaponRow(index)).join("");
+  const equippedCount = result.weapons.filter(Boolean).length;
+  const restrictedNames = result.weapons.filter((item) => item?.flags?.includes("reduces-light")).map((item) => item.name);
+  const meta = restrictedNames.length
+    ? "武装枠 " + equippedCount + " / " + result.limits.total + "（" + restrictedNames.join("、") + "により追加1枠を消費）"
+    : "武装枠 " + equippedCount + " / " + result.limits.total;
   const body = '<div class="table-wrap"><table class="weapon-table"><thead><tr><th>#</th><th>武装</th><th>種別</th><th>威力</th><th>射程</th><th>消費</th><th>重量</th><th>価格</th><th>特性</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
-  return section("武装", body, { meta: "選択した性能を行内へ反映" });
+  return section("武装", body, { meta });
 }
 
 function wireframeIdentity(result) {
@@ -518,22 +624,27 @@ function wireframePersonalClassEditor() {
   const vanguardControl = state.classes.main === "vanguard"
     ? selectField("ヴァンガード補正", "classes.vanguardBonus", state.classes.vanguardBonus, [{ value: "evade", label: "回避+1" }, { value: "armor", label: "装甲+1" }])
     : "";
-  const body = '<div class="form-grid identity-form">' +
-    field("パイロット名", "meta.pilotName", state.meta.pilotName, { placeholder: "例: ジョン・ドゥ" }) +
-    field("機体名", "meta.machineName", state.meta.machineName, { placeholder: "例: UNKNOWN:LUCK" }) +
-    field("プレイヤー名", "meta.playerName", state.meta.playerName) +
-    selectField("出自", "origin", state.origin, origins.map((item) => ({ value: item.id, label: item.name }))) +
-    originControl +
-    selectField("メインクラス", "classes.main", state.classes.main, classChoices) +
-    selectField("サブクラス", "classes.sub", state.classes.sub, classChoices) +
-    vanguardControl +
-    field("メモ", "meta.memo", state.meta.memo, { type: "textarea", rows: 3, wide: true }) +
-    '</div><div class="technique-grid">' +
-    techniqueSelect("パッシブ技巧", "techniques.passive", state.techniques.passive, passive) +
-    techniqueSelect("アクティブ技巧 1", "techniques.active.0", state.techniques.active[0], active) +
-    techniqueSelect("アクティブ技巧 2", "techniques.active.1", state.techniques.active[1], active) +
-    techniqueChoiceInputs() +
-    '</div>';
+  const vanguardSlot = vanguardControl || '<div class="build-empty" aria-hidden="true"></div>';
+  const body = '<div class="profile-memo-layout">' +
+    '<div class="personal-column">' +
+      field("パイロット名", "meta.pilotName", state.meta.pilotName, { placeholder: "例: ジョン・ドゥ" }) +
+      field("機体名", "meta.machineName", state.meta.machineName, { placeholder: "例: UNKNOWN:LUCK" }) +
+      field("プレイヤー名", "meta.playerName", state.meta.playerName) +
+    '</div>' +
+    '<div class="memo-column">' +
+      field("メモ", "meta.memo", state.meta.memo, { type: "textarea", rows: 6, wide: true }) +
+    '</div>' +
+  '</div><div class="build-grid">' +
+      selectField("出自", "origin", state.origin, origins.map((item) => ({ value: item.id, label: item.name }))) +
+      originControl +
+      selectField("メインクラス", "classes.main", state.classes.main, classChoices) +
+      selectField("サブクラス", "classes.sub", state.classes.sub, classChoices) +
+      techniqueSelect("パッシブ技巧", "techniques.passive", state.techniques.passive, passive, { wide: false }) +
+      techniqueSelect("アクティブ技巧 1", "techniques.active.0", state.techniques.active[0], active, { wide: false }) +
+      techniqueSelect("アクティブ技巧 2", "techniques.active.1", state.techniques.active[1], active, { wide: false }) +
+      vanguardSlot +
+      techniqueChoiceInputs() +
+  '</div>';
   return section("パーソナルデータ・クラス", body, { meta: "入力内容は自動保存" });
 }
 
@@ -546,12 +657,38 @@ function wireframeConfirmation(result) {
 }
 
 function wireframeRenderEdit(result) {
-  return '<main class="app-layout wireframe-layout">' + wireframeIdentity(result) + wireframeStats(result) + '<div class="editor-column">' + wireframePersonalClassEditor() + wireframePartsEditor() + wireframeWeaponEditor() + consumableEditor() + wireframeConfirmation(result) + '</div></main>';
+  return '<main class="app-layout wireframe-layout">' + wireframeIdentity(result) + wireframeStats(result) + '<div class="editor-column">' + wireframePersonalClassEditor() + wireframePartsEditor() + wireframeWeaponEditor(result) + consumableEditor() + wireframeConfirmation(result) + '</div></main>';
 }
+
+function imageEditorSlot(slot, label) {
+  const imageUrl = imageUrls[slot];
+  const fileName = imageRecords[slot]?.name ?? "";
+  const preview = imageUrl
+    ? '<img src="' + escapeHtml(imageUrl) + '" alt="' + label + '">'
+    : '<span class="image-empty">画像未設定</span>';
+  const remove = imageUrl
+    ? '<button type="button" class="image-remove-button" data-action="remove-image" data-image-slot="' + slot + '">画像を外す</button>'
+    : "";
+  return '<article class="image-editor-slot"><div class="image-editor-preview">' + preview + '</div><div class="image-editor-controls"><b>' + label + '</b><small>' + escapeHtml(fileName) + '</small><div><label class="image-upload-button">画像を選択<input type="file" accept="image/*" data-image-upload="' + slot + '"></label>' + remove + '</div></div></article>';
+}
+
+function wireframeImageEditor() {
+  return section("画像", '<div class="image-editor-grid">' + imageEditorSlot("machine", "機体画像") + imageEditorSlot("pilot", "パイロット画像") + '</div>');
+}
+
+const baseWireframeRenderEdit = wireframeRenderEdit;
+const baseRenderView = renderView;
+renderEdit = (result) => baseWireframeRenderEdit(result).replace('<div class="editor-column">', '<div class="editor-column">' + wireframeImageEditor());
+renderView = (result) => {
+  const imageViewer = imageFlipViewer();
+  if (!imageViewer) return baseRenderView(result);
+  return baseRenderView(result).replace('</dl></section>\n    <section class="view-section">', '</dl></section>' + imageViewer + '\n    <section class="view-section">');
+};
 
 combo = wireframeCombo;
 partsEditor = wireframePartsEditor;
 weaponEditor = wireframeWeaponEditor;
 classEditor = wireframePersonalClassEditor;
-renderEdit = wireframeRenderEdit;
+renderEdit = (result) => baseWireframeRenderEdit(result).replace('<div class="editor-column">', '<div class="editor-column">' + wireframeImageEditor());
 render();
+void loadStoredImages();
