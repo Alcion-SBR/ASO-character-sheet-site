@@ -409,3 +409,75 @@ importInput.addEventListener("change", async () => {
 });
 
 render();
+
+function wireframeValue(value, fallback = "-") {
+  return value === null || value === undefined || value === "" ? fallback : String(value);
+}
+
+function wireframeSigned(value) {
+  return (value >= 0 ? "+" : "") + value;
+}
+
+function wireframePartModifiers(item, custom) {
+  const labels = { ap: "AP", action: "行動", hit: "命中", evade: "回避", output: "出力", load: "積載", armor: "装甲" };
+  const source = item ? item.modifiers : custom;
+  const values = Object.entries(source ?? {}).filter(([key, value]) => key in labels && value !== "" && Number(value) !== 0);
+  return values.length ? values.map(([key, value]) => labels[key] + wireframeSigned(Number(value))).join(" / ") : "修正なし";
+}
+
+function wireframePartTraits(item, custom) {
+  const source = item ?? custom;
+  return [source?.type, source?.traits].filter(Boolean).join(" / ") || "-";
+}
+
+function wireframePrice(value) {
+  return value === null || value === undefined || value === "" ? "-" : value + "C";
+}
+
+function wireframeCombo({ kind, key, value, placeholder, entries, label, compact = false }) {
+  const keyData = escapeHtml(key);
+  const fieldClass = compact ? "table-combo-field" : "field-wide";
+  const labelClass = compact ? "sr-only" : "";
+  const list = entries.map((entry) => {
+    const labelText = kind === "part"
+      ? entry.company + " / " + SLOT_LABELS[entry.slot] + " / 『" + entry.name + "』"
+      : kind === "weapon"
+        ? entry.company + " / " + CATEGORY_LABELS[entry.category] + " / 【" + entry.type + "】『" + entry.name + "』"
+        : entry.name + " / " + entry.price + "C";
+    return '<button type="button" class="suggestion" data-action="choose-' + kind + '" data-key="' + keyData + '" data-id="' + entry.id + '" data-search="' + escapeHtml(searchText(entry)) + '">' + escapeHtml(labelText) + '</button>';
+  }).join("");
+  return '<div class="combo-wrap ' + (compact ? "table-combo-wrap" : "") + '"><label class="field ' + fieldClass + '"><span class="' + labelClass + '">' + label + '</span><input class="combo-input" autocomplete="off" data-combo-kind="' + kind + '" data-key="' + keyData + '" value="' + escapeHtml(value ?? "") + '" placeholder="' + escapeHtml(placeholder) + '" /></label><div class="suggestions" role="listbox">' + list + '<p class="no-suggestion" hidden>一致するデータはありません。入力内容はカスタム扱いで保存できます。</p></div></div>';
+}
+
+function wireframePartRow(slot) {
+  const entry = getPartEntry(slot);
+  const item = entry.id ? findPart(entry.id) : null;
+  const customDetails = item || !entry.custom.name ? "" : selectedPartInfo(slot);
+  const candidates = parts.filter((candidate) => candidate.slot === slot);
+  const company = item?.company ?? entry.custom.company;
+  const price = item?.price ?? entry.custom.price;
+  return '<tr><th scope="row">' + SLOT_LABELS[slot] + '</th><td class="part-name">' + wireframeCombo({ kind: "part", key: slot, value: partDisplay(slot), label: SLOT_LABELS[slot], placeholder: SLOT_LABELS[slot] + "を検索", entries: candidates, compact: true }) + customDetails + '</td><td>' + escapeHtml(wireframeValue(company)) + '</td><td class="compact">' + escapeHtml(wireframePartModifiers(item, entry.custom)) + '</td><td class="number">' + escapeHtml(wireframePrice(price)) + '</td><td class="traits">' + escapeHtml(wireframePartTraits(item, entry.custom)) + '</td></tr>';
+}
+
+function wireframePartsEditor() {
+  const rows = ["head", "torso", "legs", "generator"].map(wireframePartRow).join("");
+  const body = '<div class="table-wrap"><table class="assemble-table"><thead><tr><th>部位</th><th>パーツ</th><th>企業</th><th>修正</th><th>価格</th><th>タイプ・特性</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  return section("アセンブル", body, { meta: "パーツ名で候補を検索" });
+}
+
+function wireframeWeaponRow(index) {
+  const entry = getWeaponEntry(index);
+  const item = entry.id ? findWeapon(entry.id) : null;
+  const custom = entry.custom;
+  const type = item ? CATEGORY_LABELS[item.category] + " / " + item.type : custom.category ? (CATEGORY_LABELS[custom.category] ?? custom.category) + (custom.type ? " / " + custom.type : "") : "未選択";
+  const power = item ? String(item.power) + (item.damageBonus ? " + " + item.damageBonus : "") : wireframeValue(custom.power);
+  const traits = [item?.attribute ?? custom.attribute, item?.traits ?? custom.traits].filter(Boolean).join(" / ") || "-";
+  const customDetails = item || !custom.name ? "" : selectedWeaponInfo(index);
+  return '<tr><th scope="row">' + (index + 1) + '</th><td class="weapon-name">' + wireframeCombo({ kind: "weapon", key: String(index), value: weaponDisplay(index), label: "武装 " + (index + 1), placeholder: "武装名を検索", entries: weapons, compact: true }) + customDetails + '</td><td class="compact">' + escapeHtml(type) + '</td><td class="number">' + escapeHtml(power) + '</td><td>' + escapeHtml(wireframeValue(item?.range ?? custom.range)) + '</td><td>' + escapeHtml(wireframeValue(item?.output ?? custom.output)) + '</td><td>' + escapeHtml(wireframeValue(item?.weight ?? custom.weight)) + '</td><td class="number">' + escapeHtml(wireframePrice(item?.price ?? custom.price)) + '</td><td class="traits">' + escapeHtml(traits) + '</td><td><button type="button" class="remove-row table-remove" data-action="clear-weapon" data-index="' + index + '" title="この武装枠を空にする" aria-label="武装 ' + (index + 1) + ' を外す">×</button></td></tr>';
+}
+
+function wireframeWeaponEditor() {
+  const rows = state.weapons.map((_, index) => wireframeWeaponRow(index)).join("");
+  const body = '<div class="table-wrap"><table class="weapon-table"><thead><tr><th>#</th><th>武装</th><th>種別</th><th>威力</th><th>射程</th><th>消費</th><th>重量</th><th>価格</th><th>特性</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  return section("武装", body, { meta: "選択した性能を行内へ反映" });
+}
