@@ -469,7 +469,7 @@ function wireframeWeaponRow(index) {
   const entry = getWeaponEntry(index);
   const item = entry.id ? findWeapon(entry.id) : null;
   const custom = entry.custom;
-  const type = item ? CATEGORY_LABELS[item.category] + " / " + item.type : custom.category ? (CATEGORY_LABELS[custom.category] ?? custom.category) + (custom.type ? " / " + custom.type : "") : "未選択";
+  const type = item ? CATEGORY_LABELS[item.category] + " / " + item.type : custom.name ? (CATEGORY_LABELS[custom.category] ?? custom.category) + (custom.type ? " / " + custom.type : "") : "未選択";
   const power = item ? String(item.power) + (item.damageBonus ? " + " + item.damageBonus : "") : wireframeValue(custom.power);
   const traits = [item?.attribute ?? custom.attribute, item?.traits ?? custom.traits].filter(Boolean).join(" / ") || "-";
   const customDetails = item || !custom.name ? "" : selectedWeaponInfo(index);

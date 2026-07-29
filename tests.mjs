@@ -36,8 +36,7 @@ function exampleState() {
   assert(result.stats.output === 10, "例キャラ: 出力");
   assert(result.stats.armor === 1, "例キャラ: 装甲");
   assert(result.stats.load === 13 && result.totalWeight === 13, "例キャラ: 積載");
-  assert(result.remainingCredits === -3, "老兵をデータ表の7Cで計算");
-  assert(result.warnings.some((warning) => warning.code === "rouhei-price"), "老兵の価格差異を警告");
+  assert(result.remainingCredits === -3, "老兵を7Cで計算");
 }
 
 {

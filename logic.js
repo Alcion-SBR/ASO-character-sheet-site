@@ -232,7 +232,6 @@ export function calculate(state) {
   if (special && equippedWeapons.some((item) => item.attribute === "ビーム")) addWarning(warnings, "barrier-beam", "位相偏向器とビーム武装", "位相偏向器の使用中はビーム属性武装を使用不可です。戦術上の注意として確認してください。 ");
   if (equippedWeapons.some((item) => item.id === "weapon-scope") && !equippedWeapons.some((item) => ["キャノン", "スナイパーライフル"].includes(item.type))) addWarning(warnings, "scope-requirement", "高精度狙撃スコープの対象不足", "同時使用対象のキャノンまたはスナイパーライフルがありません。 ");
   if (equippedWeapons.some((item) => item.id === "weapon-ammo-box")) addWarning(warnings, "ammo-box-choice", "増設弾薬箱の装備不可枠", "軽量または重量武装を1つ装備不可にする選択が必要です。現時点では自動判定していません。 ");
-  if (equippedWeapons.some((item) => item.flags?.includes("uncertain-price"))) addWarning(warnings, "rouhei-price", "老兵の価格差異", "データ表の7Cで計算しています。キャラクターシート例では3Cとなっており、製作者確認が必要です。 ");
   if (equippedWeapons.some((item) => item.flags?.includes("uncertain-attribute"))) addWarning(warnings, "seisou-attribute", "星霜:ツインブレードの属性未記載", "ルールデータに属性が明記されていないため、属性依存の補正を適用していません。 ");
   for (const item of equippedWeapons.filter((item) => item.isCustom)) {
     for (const key of ["price", "weight", "output"]) {
