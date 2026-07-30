@@ -334,7 +334,8 @@ function imageFlipViewer() {
 function renderView(result) {
   const techniqueCards = [...result.origin.techniques, ...result.selectedClassTechniques].map((item) => {
     const choice = item.options?.find((option) => option.id === state.techniques.choices[item.id]);
-    return `<article class="technique-card ${item.strength === "W" ? "weakness" : ""}"><span>技巧・${item.strength} / ${escapeHtml(item.timing)}</span><h3>『${escapeHtml(item.name)}』</h3><p>${escapeHtml(item.description)}</p>${choice ? `<b>選択: ${escapeHtml(choice.label)}</b>` : ""}</article>`;
+    const tuneChoice = item.id === "origin-human-tune" && result.partTune.applied ? `『${result.partTune.target.name}』 / ${result.partTune.effect === "power" ? "威力+2" : "消費出力-1"}` : "";
+    return `<article class="technique-card ${item.strength === "W" ? "weakness" : ""}"><span>技巧・${item.strength} / ${escapeHtml(item.timing)}</span><h3>『${escapeHtml(item.name)}』</h3><p>${escapeHtml(item.description)}</p>${choice ? `<b>選択: ${escapeHtml(choice.label)}</b>` : ""}${tuneChoice ? `<b>選択: ${escapeHtml(tuneChoice)}</b>` : ""}</article>`;
   }).join("");
   const itemRows = result.consumables.filter(Boolean).map((item) => `<li><b>${escapeHtml(item.name)}</b><span>${item.price ?? "未設定"}C / ${escapeHtml(item.effect)}</span></li>`).join("") || "<li><span>なし</span></li>";
   const warnings = result.warnings.length ? result.warnings.map((warning) => `<li><b>${escapeHtml(warning.title)}</b><span>${escapeHtml(warning.detail)}</span></li>`).join("") : "<li class=\"good\"><b>判定上の警告はありません</b></li>";
@@ -540,6 +541,7 @@ async function handleAction(event) {
   if (action === "switch-mode") { mode = button.dataset.mode; render(); return; }
   if (action === "flip-images") { isImageFlipped = !isImageFlipped; render(); return; }
   if (action.startsWith("choose-")) { chooseComboButton(button); return; }
+  if (action === "set-part-tune-effect") { state.partTune.effect = button.dataset.effect; saveDraft(); render(); return; }
   if (action === "clear-weapon") { state.weapons[Number(button.dataset.index)] = createDefaultState().weapons[0]; saveDraft(); render(); return; }
   if (action === "add-consumable") { state.consumables.push(createDefaultState().consumables[0]); saveDraft(); render(); return; }
   if (action === "remove-consumable") { state.consumables.splice(Number(button.dataset.index), 1); saveDraft(); render(); return; }
@@ -622,19 +624,21 @@ function wireframePartsEditor() {
   return section("アセンブル", body, { meta: "パーツ名で候補を検索" });
 }
 
-function wireframeWeaponRow(index) {
+function wireframeWeaponRow(index, calculatedItem) {
   const entry = getWeaponEntry(index);
-  const item = entry.id ? findWeapon(entry.id) : null;
+  const sourceItem = entry.id ? findWeapon(entry.id) : null;
+  const item = calculatedItem ?? sourceItem;
   const custom = entry.custom;
   const type = item ? CATEGORY_LABELS[item.category] + " / " + item.type : custom.name ? (CATEGORY_LABELS[custom.category] ?? custom.category) + (custom.type ? " / " + custom.type : "") : "未選択";
   const power = item ? String(item.power) + (item.damageBonus ? " + " + item.damageBonus : "") : wireframeValue(custom.power);
-  const traits = [item?.attribute ?? custom.attribute, item?.traits ?? custom.traits].filter(Boolean).join(" / ") || "-";
-  const customDetails = item || !custom.name ? "" : selectedWeaponInfo(index);
+  const tuneLabel = item?.partTuneEffect === "power" ? "チューン: 威力+2" : item?.partTuneEffect === "output" ? "チューン: 消費出力-1" : "";
+  const traits = [item?.attribute ?? custom.attribute, item?.traits ?? custom.traits, tuneLabel].filter(Boolean).join(" / ") || "-";
+  const customDetails = sourceItem || !custom.name ? "" : selectedWeaponInfo(index);
   return '<tr><th scope="row">' + (index + 1) + '</th><td class="weapon-name">' + wireframeCombo({ kind: "weapon", key: String(index), value: weaponDisplay(index), label: "武装 " + (index + 1), placeholder: "武装名を検索", entries: weapons, compact: true }) + customDetails + '</td><td class="compact">' + escapeHtml(type) + '</td><td class="number">' + escapeHtml(power) + '</td><td>' + escapeHtml(wireframeValue(item?.range ?? custom.range)) + '</td><td>' + escapeHtml(wireframeValue(item?.output ?? custom.output)) + '</td><td>' + escapeHtml(wireframeValue(item?.weight ?? custom.weight)) + '</td><td class="number">' + escapeHtml(wireframePrice(item?.price ?? custom.price)) + '</td><td class="traits">' + escapeHtml(traits) + '</td><td><button type="button" class="remove-row table-remove" data-action="clear-weapon" data-index="' + index + '" title="この武装枠を空にする" aria-label="武装 ' + (index + 1) + ' を外す">×</button></td></tr>';
 }
 
 function wireframeWeaponEditor(result = calculate(state)) {
-  const rows = state.weapons.map((_, index) => wireframeWeaponRow(index)).join("");
+  const rows = state.weapons.map((_, index) => wireframeWeaponRow(index, result.weapons[index])).join("");
   const equippedCount = result.weapons.filter(Boolean).length;
   const restrictedNames = result.weapons.filter((item) => item?.flags?.includes("reduces-light")).map((item) => item.name);
   const meta = restrictedNames.length
@@ -670,7 +674,28 @@ function wireframeStats(result) {
   return '<dl class="inline-stats">' + cards.join("") + '</dl>';
 }
 
-function wireframePersonalClassEditor() {
+function wireframePartTuneControls(result) {
+  if (state.origin !== "human") return "";
+  const weaponChoices = [
+    { value: "", label: "対象武装を選択" },
+    ...result.weapons.map((item, index) => item ? { value: String(index), label: (index + 1) + ". " + item.name } : null).filter(Boolean),
+  ];
+  const target = result.partTune.target;
+  const targetOutput = Number(target?.output);
+  const outputDisabled = !target || !Number.isFinite(targetOutput) || targetOutput <= 1;
+  const effect = state.partTune.effect;
+  const effectButton = (value, label, disabled) => '<button type="button" class="part-tune-option' + (effect === value ? ' active' : '') + '" data-action="set-part-tune-effect" data-effect="' + value + '" aria-pressed="' + String(effect === value) + '"' + (disabled ? ' disabled' : '') + '>' + label + '</button>';
+  return '<div class="part-tune-panel">' +
+    '<div class="part-tune-heading"><b>【技巧・S】パーツチューン</b><span>ミッション開始前に変更可能</span></div>' +
+    '<div class="part-tune-controls">' +
+      selectField("対象武装", "partTune.weaponIndex", state.partTune.weaponIndex, weaponChoices) +
+      '<div class="field"><span>効果</span><div class="part-tune-options" role="group" aria-label="パーツチューンの効果">' +
+        effectButton("power", "威力+2", !target) + effectButton("output", "消費出力-1", outputDisabled) +
+      '</div></div>' +
+    '</div></div>';
+}
+
+function wireframePersonalClassEditor(result = calculate(state)) {
   const classChoices = [{ value: "", label: "選択してください" }, ...classes.map((item) => ({ value: item.id, label: item.name }))];
   const passive = techniqueOptions("パッシブ");
   const active = techniqueOptions("アクティブ");
@@ -700,6 +725,7 @@ function wireframePersonalClassEditor() {
       techniqueSelect("アクティブ技巧 2", "techniques.active.1", state.techniques.active[1], active, { wide: false }) +
       vanguardSlot +
       techniqueChoiceInputs() +
+      wireframePartTuneControls(result) +
   '</div>';
   return section("パーソナルデータ・クラス", body, { meta: "入力内容は自動保存" });
 }
@@ -713,7 +739,7 @@ function wireframeConfirmation(result) {
 }
 
 function wireframeRenderEdit(result) {
-  return '<main class="app-layout wireframe-layout">' + wireframeIdentity(result) + wireframeStats(result) + '<div class="editor-column">' + wireframePersonalClassEditor() + wireframePartsEditor() + wireframeWeaponEditor(result) + consumableEditor() + wireframeConfirmation(result) + '</div></main>';
+  return '<main class="app-layout wireframe-layout">' + wireframeIdentity(result) + wireframeStats(result) + '<div class="editor-column">' + wireframePersonalClassEditor(result) + wireframePartsEditor() + wireframeWeaponEditor(result) + consumableEditor() + wireframeConfirmation(result) + '</div></main>';
 }
 
 function imageEditorSlot(slot, label) {

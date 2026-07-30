@@ -1,4 +1,4 @@
-import { calculate, createDefaultState, exportFilename, hydrateState } from "./logic.js";
+import { buildSheetText, calculate, createDefaultState, exportFilename, hydrateState } from "./logic.js";
 import { buildEditableHtml } from "./exporter.js";
 import { buildCocofoliaCharacter } from "./cocofolia.js";
 
@@ -80,6 +80,47 @@ function exampleState() {
   state.weapons[3].id = "weapon-rouhei";
   const overResult = calculate(state);
   assert(overResult.warnings.some((warning) => warning.code === "weapon-total"), "追加枠消費後の武装枠超過を警告");
+}
+
+{
+  const state = createDefaultState();
+  state.weapons[0].id = "weapon-muramasa";
+  state.partTune = { weaponIndex: "0", effect: "power" };
+  const result = calculate(state);
+  assert(result.partTune.applied, "人間のパーツチューンを適用");
+  assert(result.weapons[0].damageBonus === 2, "パーツチューンの威力+2を武装へ反映");
+  assert(buildSheetText(state, result).includes("『村正』 / 威力+2"), "テンプレート出力へパーツチューンを記載");
+}
+
+{
+  const state = createDefaultState();
+  state.weapons[0].id = "weapon-muramasa";
+  state.partTune = { weaponIndex: "0", effect: "output" };
+  const result = calculate(state);
+  assert(result.weapons[0].baseOutput === 2 && result.weapons[0].output === 1, "パーツチューンの消費出力-1を武装へ反映");
+}
+
+{
+  const state = createDefaultState();
+  state.weapons[0].id = "weapon-kokuin";
+  state.partTune = { weaponIndex: "0", effect: "output" };
+  const result = calculate(state);
+  assert(!result.partTune.applied && result.weapons[0].output === 1, "消費出力を0にするパーツチューンは適用しない");
+  assert(result.warnings.some((warning) => warning.code === "part-tune-output"), "消費出力0になる選択を警告");
+}
+
+{
+  const state = createDefaultState();
+  state.origin = "enhanced";
+  state.weapons[0].id = "weapon-muramasa";
+  state.partTune = { weaponIndex: "0", effect: "power" };
+  const result = calculate(state);
+  assert(!result.partTune.applied && result.weapons[0].damageBonus === 0, "強化人間には人間のパーツチューンを適用しない");
+}
+
+{
+  const hydrated = hydrateState({ origin: "human" });
+  assert(hydrated.partTune.weaponIndex === "" && hydrated.partTune.effect === "", "旧データへ空のパーツチューン設定を補完");
 }
 
 {

@@ -31,6 +31,7 @@ export function createDefaultState() {
     origin: "human",
     humanBonus: "evade",
     classes: { main: "", sub: "", vanguardBonus: "evade" },
+    partTune: { weaponIndex: "", effect: "" },
     parts: Object.fromEntries(PART_SLOTS.map((slot) => [slot, { id: "", custom: customPart() }])),
     weapons: Array.from({ length: 4 }, () => ({ id: "", custom: customWeapon() })),
     consumables: [{ id: "", custom: customConsumable() }],
@@ -48,6 +49,12 @@ export function hydrateState(candidate) {
   state.origin = typeof candidate.origin === "string" ? candidate.origin : base.origin;
   state.humanBonus = candidate.humanBonus === "hit" ? "hit" : "evade";
   state.classes = { ...base.classes, ...(candidate.classes ?? {}) };
+  const partTune = candidate.partTune ?? {};
+  const weaponIndex = String(partTune.weaponIndex ?? "");
+  state.partTune = {
+    weaponIndex: ["0", "1", "2", "3"].includes(weaponIndex) ? weaponIndex : "",
+    effect: ["power", "output"].includes(partTune.effect) ? partTune.effect : "",
+  };
   for (const slot of PART_SLOTS) {
     const source = candidate.parts?.[slot] ?? {};
     state.parts[slot] = { id: typeof source.id === "string" ? source.id : "", custom: { ...customPart(), ...(source.custom ?? {}) } };
@@ -207,7 +214,13 @@ export function calculate(state) {
   const totalWeight = equippedWeapons.reduce((sum, item) => sum + (item.weight ?? 0), 0);
   const hasUnknownWeight = equippedWeapons.some((item) => item.weight === null);
   const remainingLoad = stats.load - totalWeight;
-  const damageBonusFor = (item) => {
+  const tuneIndex = Number.parseInt(state.partTune?.weaponIndex, 10);
+  const tuneEffect = state.partTune?.effect ?? "";
+  const tuneTarget = Number.isInteger(tuneIndex) ? resolvedWeapons[tuneIndex] : null;
+  const tuneIsHuman = origin.id === "human";
+  const tuneOutputAllowed = tuneTarget && num(tuneTarget.output) !== null && num(tuneTarget.output) > 1;
+  const tuneApplied = Boolean(tuneIsHuman && tuneTarget && (tuneEffect === "power" || (tuneEffect === "output" && tuneOutputAllowed)));
+  const damageBonusFor = (item, index) => {
     let amount = 0;
     if (mainClass?.id === "assaulter") amount += 2;
     if (resolvedParts.legs?.id === "legs-yamato" && item.category === "melee") amount += 2;
@@ -215,9 +228,24 @@ export function calculate(state) {
     if (equippedWeapons.some((weapon) => weapon.id === "weapon-ammo-box") && item.attribute === "実弾") amount += 1;
     if (hasTechnique(state, "class-assaulter-rapid") && state.techniques.choices["class-assaulter-rapid"] === "short") amount += 2;
     if (hasTechnique(state, "class-assaulter-rapid") && state.techniques.choices["class-assaulter-rapid"] === "long") amount += 1;
+    if (tuneApplied && tuneEffect === "power" && index === tuneIndex) amount += 2;
     return amount;
   };
-  const weaponsWithBonuses = resolvedWeapons.map((item) => item ? { ...item, damageBonus: damageBonusFor(item) } : null);
+  const weaponsWithBonuses = resolvedWeapons.map((item, index) => item ? {
+    ...item,
+    baseOutput: item.output,
+    output: tuneApplied && tuneEffect === "output" && index === tuneIndex ? num(item.output) - 1 : item.output,
+    damageBonus: damageBonusFor(item, index),
+    partTuneEffect: tuneApplied && index === tuneIndex ? tuneEffect : "",
+  } : null);
+
+  if (tuneIsHuman && (!state.partTune?.weaponIndex || !tuneEffect)) {
+    addWarning(warnings, "part-tune-missing", "パーツチューン未設定", "ミッション開始前に、対象武装と「威力+2」または「消費出力-1」を選択してください。");
+  } else if (tuneIsHuman && !tuneTarget) {
+    addWarning(warnings, "part-tune-target", "パーツチューン対象が未装備", "対象にした武装枠へ武装を装備するか、別の武装を選択してください。");
+  } else if (tuneIsHuman && tuneEffect === "output" && !tuneOutputAllowed) {
+    addWarning(warnings, "part-tune-output", "パーツチューンを適用できません", "消費出力は0にできません。消費出力が2以上の武装を選ぶか、「威力+2」を選択してください。");
+  }
 
   if (mainClass && subClass && mainClass.id === subClass.id) addWarning(warnings, "same-class", "メインとサブが同一クラス", "同一クラス選択の可否は製作者未確認です。現状は保存できます。 ");
   for (const slot of PART_SLOTS) if (!resolvedParts[slot]) addWarning(warnings, `missing-${slot}`, "未選択の構成パーツ", `${SLOT_LABELS[slot]}を選択またはカスタム入力してください。`);
@@ -271,6 +299,7 @@ export function calculate(state) {
     origin, mainClass, subClass, parts: resolvedParts, weapons: weaponsWithBonuses, consumables: resolvedConsumables,
     stats, statAdjustments, breakdown, outputRecovery, categoryCounts, limits, totalWeight, remainingLoad,
     totalCost, remainingCredits, warnings, notices, selectedClassTechniques, selectedTechniqueIds: selectedTechniqueIds(state), formatSigned,
+    partTune: { weaponIndex: Number.isInteger(tuneIndex) ? tuneIndex : null, effect: tuneEffect, target: tuneTarget, applied: tuneApplied },
   };
 }
 
@@ -316,7 +345,12 @@ export function buildSheetText(state, result = calculate(state)) {
   });
   lines.push("");
   lines.push("■ 所持【技巧】");
-  for (const item of result.origin.techniques) lines.push(`・【技巧・${item.strength}】『${item.name}』 ${item.description}`);
+  for (const item of result.origin.techniques) {
+    lines.push(`・【技巧・${item.strength}】『${item.name}』 ${item.description}`);
+    if (item.id === "origin-human-tune" && result.partTune.applied) {
+      lines.push(`  選択: 『${result.partTune.target.name}』 / ${result.partTune.effect === "power" ? "威力+2" : "消費出力-1"}`);
+    }
+  }
   for (const item of result.selectedClassTechniques) {
     const choice = item.options?.find((option) => option.id === state.techniques.choices[item.id]);
     lines.push(`・【技巧・${item.strength}】『${item.name}』 タイミング:${item.timing}`);

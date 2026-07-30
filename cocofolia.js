@@ -32,6 +32,9 @@ function techniqueCommands(state, result) {
     const choice = item.options?.find((option) => option.id === state.techniques.choices[item.id]);
     lines.push("【" + item.timing + "】『" + item.name + "』");
     lines.push(item.description + (choice ? " 選択: " + choice.label : ""));
+    if (item.id === "origin-human-tune" && result.partTune.applied) {
+      lines.push("選択: 『" + result.partTune.target.name + "』 / " + (result.partTune.effect === "power" ? "威力+2" : "消費出力-1"));
+    }
   }
   return lines;
 }
