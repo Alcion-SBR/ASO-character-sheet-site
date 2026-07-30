@@ -12,6 +12,27 @@ TRPG『アサルト・スティール・オンライン』用の、ローカル�
 - 書き出し: ヘッダーの形式選択から、再編集用JSON、提出・貼り付け用テンプレートテキスト、Discord等で配布できる閲覧用HTMLを保存できます。ココフォリア用JSONはコピーして貼り付けます。
 - JSON: 明示的なエクスポートとインポートで、別の環境へ持ち出せます。
 
+## Discordで編集サイトを配る
+
+`node build-distribution.mjs` を実行すると、`A.S.OTRPGキャラクターシート配布版.html` が作成されます。
+このHTMLは、編集機能・ルールデータ・見た目を1ファイルにまとめた配布版です。Discordにはこのファイルだけを添付してください。受け取った人はダウンロードしてブラウザで開けば使えます。
+
+- 同じファイルを再度開くと、そのブラウザ内の下書きと画像が保持されます。一部のブラウザでローカルHTMLの自動保存が拒否された場合でも、編集・計算・JSON書き出しは利用できます。
+- 別の端末で続きを編集する場合は、再編集用JSONも一緒に渡します。
+- キャラクターごとの閲覧専用HTMLは、アプリ内の「共有用HTML（.html）」から別途出力します。
+
+## Cloudflare Pagesで公開する
+
+`node build-distribution.mjs` を実行すると、`cloudflare-pages/index.html` も作成されます。このフォルダはCloudflare Pagesへそのままアップロードする公開用フォルダです。
+
+1. Cloudflareへ無料アカウントでログインする。
+2. `Workers & Pages` から `Create application` を選び、`Get started` の `Drag and drop your files` を選ぶ。
+3. プロジェクト名を入力する。公開URLは `<プロジェクト名>.pages.dev` になる。
+4. `cloudflare-pages` フォルダをアップロードし、`Deploy site` を選ぶ。
+5. 更新時はこのビルドを再実行し、Cloudflare Pagesの `Create a new deployment` から同じフォルダを再アップロードする。
+
+ドラッグ&ドロップで作成したPagesプロジェクトは、あとからGit連携へ切り替えられない。自動公開が必要になった場合は、Git連携用に別のPagesプロジェクトを作る。
+
 ## ルールデータの扱い
 
 - `data.js` はルール資料と製作者の回答を元に構造化したデータです。

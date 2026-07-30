@@ -53,9 +53,14 @@ function loadDraft() {
 
 function saveDraft() {
   state.updatedAt = new Date().toISOString();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  let persisted = true;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    persisted = false;
+  }
   const indicator = document.querySelector("#save-indicator");
-  if (indicator) indicator.textContent = "下書き保存済み";
+  if (indicator) indicator.textContent = persisted ? "下書き保存済み" : "この環境では自動保存なし";
 }
 
 function setImageRecord(slot, record) {

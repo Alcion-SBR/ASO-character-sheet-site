@@ -1,0 +1,2263 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A.S.O.TRPG のローカル利用向けキャラクターシート" />
+    <title>A.S.OTRPGキャラクターシート</title>
+    <style>
+:root {
+  color-scheme: dark;
+  --ink: #edf1f4;
+  --muted: #98a5ae;
+  --canvas: #111519;
+  --panel: #191f24;
+  --panel-strong: #222a30;
+  --line: #3a464e;
+  --line-soft: #283239;
+  --accent: #e3b341;
+  --accent-strong: #ffd166;
+  --cyan: #6bc4cc;
+  --red: #e46262;
+  --green: #82c991;
+  --shadow: 0 12px 30px rgb(0 0 0 / 24%);
+  font-family: Inter, "Noto Sans JP", "Yu Gothic UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 960px; background: var(--canvas); color: var(--ink); font-size: 14px; line-height: 1.5; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+
+.topbar {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 10px max(24px, calc((100vw - 1440px) / 2));
+  border-bottom: 1px solid var(--line);
+  background: rgb(17 21 25 / 96%);
+  backdrop-filter: blur(14px);
+}
+
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-mark { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--accent); color: var(--accent-strong); font-family: "Arial Narrow", sans-serif; font-weight: 800; letter-spacing: 0; }
+.brand h1 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+.topbar-actions { display: flex; align-items: center; gap: 6px; }
+.save-indicator { margin-right: 8px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+.mode-button, .icon-button, .secondary-button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--ink);
+}
+.mode-button { min-width: 52px; padding: 5px 10px; }
+.mode-button.active { border-color: var(--accent); background: #3b321c; color: var(--accent-strong); }
+.icon-button { display: grid; width: 34px; place-items: center; font-size: 18px; line-height: 1; }
+.icon-button:hover, .secondary-button:hover, .mode-button:hover { border-color: var(--cyan); background: var(--panel-strong); }
+.icon-button.danger { color: #ffb3b3; }
+.export-picker { display: block; }
+.export-select { min-height: 34px; max-width: 158px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--ink); font: inherit; font-size: 12px; }
+.export-select:hover, .export-select:focus { border-color: var(--cyan); background: var(--panel-strong); outline: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+.app-layout { width: min(1440px, calc(100% - 48px)); margin: 26px auto 52px; }
+.edit-layout { display: grid; grid-template-columns: minmax(0, 1fr) 332px; align-items: start; gap: 22px; }
+.editor-column { display: grid; gap: 18px; min-width: 0; }
+.editor-section, .summary-panel, .view-section, .sheet-identity { border: 1px solid var(--line); border-radius: 6px; background: var(--panel); box-shadow: var(--shadow); }
+.editor-section { padding: 18px; }
+.section-heading, .view-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line-soft); }
+.section-heading h2, .view-section-heading h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0; }
+.section-heading span, .view-section-heading span { color: var(--muted); font-size: 12px; text-align: right; }
+
+.form-grid, .custom-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.field { display: grid; min-width: 0; gap: 5px; }
+.field-wide { grid-column: 1 / -1; }
+.field > span { color: var(--muted); font-size: 12px; }
+.field input, .field select, .field textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  outline: none;
+  background: #101519;
+  color: var(--ink);
+}
+.field textarea { min-height: 76px; resize: vertical; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px rgb(107 196 204 / 14%); }
+.muted-field { padding: 7px 9px; border: 1px solid var(--line); border-radius: 4px; background: #151b1f; }
+.muted-field b { font-weight: 600; }
+
+.technique-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
+.combo-wrap { position: relative; z-index: 2; }
+.combo-wrap:focus-within { z-index: 10; }
+.suggestions { position: absolute; z-index: 20; top: calc(100% - 2px); right: 0; left: 0; display: none; max-height: 278px; overflow: auto; padding: 4px; border: 1px solid var(--cyan); border-radius: 4px; background: #11171b; box-shadow: 0 16px 30px rgb(0 0 0 / 42%); }
+.combo-wrap.is-open .suggestions { display: grid; }
+.suggestion { width: 100%; padding: 8px 9px; border: 0; border-radius: 3px; background: transparent; color: var(--ink); text-align: left; }
+.suggestion:hover { background: #25343a; color: #fff; }
+.no-suggestion { margin: 0; padding: 8px 9px; color: var(--muted); }
+
+.assemble-row { position: relative; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.assemble-row:first-child { padding-top: 0; }
+.assemble-row:last-child { padding-bottom: 0; border-bottom: 0; }
+.selected-info { display: grid; gap: 2px; margin-top: 7px; padding: 8px 10px; border-left: 2px solid var(--cyan); background: #141b1f; color: var(--muted); }
+.selected-info b { color: var(--ink); font-size: 13px; }
+.selected-info small { color: #b4c1c9; }
+.selected-info.compact { padding-right: 16px; }
+.custom-details { margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: #141a1e; }
+.custom-details summary { color: var(--accent-strong); cursor: pointer; }
+.custom-grid { margin-top: 10px; }
+
+.weapon-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) 30px; gap: 10px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.weapon-row:first-child { padding-top: 0; }
+.weapon-row:last-child { padding-bottom: 0; border-bottom: 0; }
+.row-index { display: grid; width: 26px; height: 26px; place-items: center; margin-top: 23px; border: 1px solid var(--line); border-radius: 3px; color: var(--accent-strong); font-weight: 700; }
+.remove-row { display: grid; width: 28px; height: 28px; place-items: center; margin-top: 23px; border: 1px solid #744; border-radius: 3px; background: #321c20; color: #ffacac; font-size: 18px; line-height: 1; }
+.remove-row:hover { background: #5a252c; }
+.consumable-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.consumable-row { position: relative; min-width: 0; padding-right: 34px; }
+.consumable-row .remove-row { position: absolute; top: 0; right: 0; margin-top: 23px; }
+
+.summary-panel { position: sticky; top: 96px; overflow: hidden; }
+.status-grid { display: grid; grid-template-columns: repeat(2, 1fr); }
+.stat-card { min-height: 94px; padding: 13px; border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+.stat-card:nth-child(2n) { border-right: 0; }
+.stat-card span { display: block; color: var(--muted); font-size: 12px; }
+.stat-card strong { display: block; margin: 2px 0; color: var(--accent-strong); font-size: 26px; font-variant-numeric: tabular-nums; }
+.stat-card small { color: var(--muted); }
+.summary-numbers { display: grid; grid-template-columns: repeat(2, 1fr); border-bottom: 1px solid var(--line-soft); }
+.summary-numbers > div { display: grid; gap: 2px; padding: 13px; border-right: 1px solid var(--line-soft); }
+.summary-numbers > div:last-child { border-right: 0; }
+.summary-numbers span { color: var(--muted); font-size: 12px; }
+.summary-numbers strong { color: var(--cyan); font-size: 22px; font-variant-numeric: tabular-nums; }
+.summary-numbers small { color: var(--muted); }
+.negative { color: var(--red) !important; }
+.warning-panel { padding: 14px; }
+.warning-panel h3 { margin: 0 0 8px; color: var(--accent-strong); font-size: 13px; }
+.warning-panel ul, .item-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.warning-panel li, .item-list li { display: grid; gap: 2px; padding: 8px; border-left: 2px solid var(--red); background: #251b1d; }
+.warning-panel li span, .item-list li span { color: #c3cbd0; font-size: 12px; }
+.warning-panel li.good { border-color: var(--green); background: #17241c; }
+
+.sheet-text { width: 100%; min-height: 300px; padding: 12px; border: 1px solid var(--line); border-radius: 4px; background: #101519; color: #d8e2e7; font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; line-height: 1.55; resize: vertical; }
+.output-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+.secondary-button { padding: 7px 11px; }
+
+.view-shell { width: min(1080px, calc(100% - 48px)); margin: 30px auto 52px; }
+.sheet-identity { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 20px; align-items: end; padding: 24px; border-top: 3px solid var(--accent); }
+.sheet-identity span { color: var(--muted); font-size: 12px; }
+.sheet-identity h2 { margin: 3px 0 0; color: var(--accent-strong); font-size: 24px; font-weight: 700; letter-spacing: 0; overflow-wrap: anywhere; }
+.sheet-identity dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.sheet-identity dl div { padding-left: 10px; border-left: 1px solid var(--line); }
+.sheet-identity dt { color: var(--muted); font-size: 11px; }
+.sheet-identity dd { margin: 2px 0 0; font-weight: 600; }
+.view-section { margin-top: 16px; padding: 18px; }
+.view-stats { display: grid; grid-template-columns: repeat(6, 1fr); border: 1px solid var(--line-soft); border-radius: 4px; overflow: hidden; }
+.view-stats .stat-card { min-height: 82px; }
+.view-stats .stat-card:nth-child(2n) { border-right: 1px solid var(--line-soft); }
+.view-stats .stat-card:last-child { border-right: 0; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 9px 10px; border-bottom: 1px solid var(--line-soft); text-align: left; vertical-align: top; }
+th { color: var(--muted); font-size: 12px; font-weight: 500; white-space: nowrap; }
+thead th { border-bottom-color: var(--line); background: #141a1e; color: #bcc7ce; }
+.technique-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.technique-card { min-height: 122px; padding: 13px; border: 1px solid #3c4b45; border-radius: 4px; background: #18211e; }
+.technique-card.weakness { border-color: #5a3b3c; background: #251b1d; }
+.technique-card > span { color: var(--cyan); font-size: 11px; }
+.technique-card.weakness > span { color: #ec9999; }
+.technique-card h3 { margin: 4px 0; font-size: 15px; }
+.technique-card p { margin: 0; color: #c0cbd0; font-size: 12px; }
+.technique-card b { display: block; margin-top: 7px; color: var(--accent-strong); font-size: 12px; }
+.view-bottom { display: grid; grid-template-columns: 1fr 1.1fr; gap: 20px; }
+.view-warnings { margin: 0; padding: 0; }
+.memo-view { margin: 0; white-space: pre-wrap; }
+.page-footer { padding: 0 24px 30px; color: var(--muted); font-size: 11px; text-align: center; }
+
+@media (max-width: 1100px) {
+  body { min-width: 720px; }
+  .edit-layout { grid-template-columns: minmax(0, 1fr) 292px; }
+  .topbar { padding-right: 24px; padding-left: 24px; }
+  .view-stats { grid-template-columns: repeat(3, 1fr); }
+  .view-stats .stat-card:nth-child(2n) { border-right: 1px solid var(--line-soft); }
+  .view-stats .stat-card:nth-child(3n) { border-right: 0; }
+}
+
+@media (max-width: 760px) {
+  body { min-width: 0; }
+  .topbar { position: static; align-items: flex-start; padding: 12px; }
+  .brand h1 { font-size: 13px; }
+  .brand-mark { width: 38px; height: 38px; font-size: 12px; }
+  .save-indicator { display: none; }
+  .topbar-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .app-layout, .view-shell { width: min(100% - 24px, 680px); margin-top: 12px; }
+  .edit-layout { display: block; }
+  .summary-panel { position: static; margin-top: 16px; }
+  .form-grid, .custom-grid, .technique-grid, .consumable-grid { grid-template-columns: 1fr; }
+  .sheet-identity { grid-template-columns: 1fr; gap: 14px; }
+  .sheet-identity dl { grid-template-columns: repeat(3, 1fr); }
+  .view-bottom { grid-template-columns: 1fr; }
+  .technique-cards { grid-template-columns: 1fr; }
+  .view-stats { grid-template-columns: repeat(2, 1fr); }
+  .view-stats .stat-card:nth-child(3n) { border-right: 1px solid var(--line-soft); }
+  .view-stats .stat-card:nth-child(2n) { border-right: 0; }
+}
+
+:root {
+  color-scheme: light;
+  --ink: #1f2933;
+  --muted: #68737d;
+  --canvas: #ffffff;
+  --panel: #ffffff;
+  --panel-strong: #f5f7f8;
+  --line: #d7dde1;
+  --line-soft: #e7ebee;
+  --accent: #a6691b;
+  --accent-strong: #8a5512;
+  --cyan: #087e8b;
+  --red: #b64038;
+  --green: #237a4b;
+  --shadow: none;
+}
+
+body {
+  min-width: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Yu Gothic UI", "Meiryo", sans-serif;
+}
+
+.topbar {
+  min-height: 62px;
+  padding: 10px max(22px, calc((100vw - 1280px) / 2));
+  border-color: #aeb9c0;
+  background: rgb(255 255 255 / 96%);
+  backdrop-filter: blur(12px);
+}
+
+.brand { gap: 10px; }
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  border-color: var(--accent);
+  color: var(--accent);
+  font: 700 12px/1 Arial, sans-serif;
+}
+.brand h1 { color: var(--ink); font-size: 15px; }
+.brand p, .save-indicator { color: var(--muted); }
+.topbar-actions { gap: 6px; }
+
+.mode-button,
+.icon-button,
+.secondary-button,
+.export-select {
+  border-color: #aeb9c0;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+}
+.mode-button.active {
+  border-color: var(--accent);
+  background: #fffaf2;
+  color: var(--accent-strong);
+}
+.icon-button:hover,
+.secondary-button:hover,
+.mode-button:hover,
+.export-select:hover {
+  border-color: var(--cyan);
+  background: #f0f8f9;
+}
+.icon-button.danger { color: var(--red); }
+.export-select:focus { border-color: var(--cyan); background: #fff; }
+
+.app-layout.wireframe-layout {
+  width: min(1220px, calc(100% - 40px));
+  margin: 0 auto 48px;
+}
+.wireframe-layout .editor-column { display: block; }
+
+.edit-identity {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin: 0;
+  padding: 26px 0 20px;
+  border: 0;
+  border-bottom: 2px solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.portrait-slot {
+  display: grid;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px dashed #aeb9c0;
+  background: #f5f7f8;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.identity-copy { display: grid; gap: 5px; align-content: start; min-width: 0; }
+.identity-copy h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+.eyebrow { margin: 0; color: var(--muted); font-size: 12px; }
+.machine-name { margin: 0; color: var(--accent); font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.identity-detail { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+
+.inline-stats {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  margin: 0;
+  border-bottom: 1px solid #aeb9c0;
+}
+.inline-stat {
+  min-height: 86px;
+  padding: 12px;
+  border-right: 1px solid var(--line);
+}
+.inline-stat:first-child { border-left: 1px solid var(--line); }
+.inline-stat dt { color: var(--muted); font-size: 12px; }
+.inline-stat dd {
+  margin: 5px 0 0;
+  color: var(--accent);
+  font-size: 25px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.inline-stat small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.inline-stat .teal { color: var(--cyan); }
+.inline-stat .negative { color: var(--red); }
+
+.wireframe-layout .editor-section {
+  margin: 0;
+  padding: 24px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.wireframe-layout .section-heading {
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+.wireframe-layout .section-heading h2 { color: var(--ink); font-size: 17px; }
+.wireframe-layout .section-heading span { color: var(--muted); font-size: 12px; }
+
+.wireframe-layout .form-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.wireframe-layout .field { gap: 5px; }
+.wireframe-layout .field > span { color: var(--muted); font-size: 12px; }
+.wireframe-layout .field input,
+.wireframe-layout .field select,
+.wireframe-layout .field textarea {
+  border-color: #aeb9c0;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+}
+.wireframe-layout .field input:focus,
+.wireframe-layout .field select:focus,
+.wireframe-layout .field textarea:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px rgb(8 126 139 / 14%);
+}
+.wireframe-layout .muted-field {
+  border-color: #aeb9c0;
+  background: #f5f7f8;
+  color: var(--ink);
+}
+.wireframe-layout .technique-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+  padding-top: 16px;
+  border-color: var(--line);
+}
+.wireframe-layout .technique-grid .field-wide { grid-column: span 2; }
+
+.wireframe-layout .profile-memo-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-bottom: 18px;
+}
+.wireframe-layout .personal-column,
+.wireframe-layout .memo-column {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+.wireframe-layout .memo-column .field-wide { grid-column: auto; }
+.wireframe-layout .memo-column textarea { min-height: 181px; height: 181px; }
+.wireframe-layout .image-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.wireframe-layout .image-editor-slot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(156px, 0.7fr);
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+}
+.wireframe-layout .image-editor-preview {
+  display: grid;
+  min-height: 164px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  place-items: center;
+  border-right: 1px solid var(--line);
+  background: #f5f7f8;
+  color: var(--muted);
+  font-size: 12px;
+}
+.wireframe-layout .image-editor-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.wireframe-layout .image-editor-controls {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  padding: 14px;
+}
+.wireframe-layout .image-editor-controls b { color: var(--ink); }
+.wireframe-layout .image-editor-controls small {
+  min-height: 18px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.wireframe-layout .image-editor-controls > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.wireframe-layout .image-upload-button,
+.wireframe-layout .image-remove-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.wireframe-layout .image-upload-button:hover { border-color: var(--cyan); background: #effafa; }
+.wireframe-layout .image-remove-button { border-color: #d7b3b0; color: var(--red); }
+.wireframe-layout .image-remove-button:hover { background: #fff1f0; }
+.wireframe-layout .image-upload-button input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.wireframe-layout .build-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.wireframe-layout .build-grid .field-wide { grid-column: span 2; }
+.wireframe-layout .build-empty { min-height: 36px; }
+
+.table-wrap { overflow-x: auto; }
+.wireframe-layout table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.wireframe-layout th,
+.wireframe-layout td {
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-align: left;
+  vertical-align: top;
+}
+.wireframe-layout thead th {
+  background: #f5f7f8;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wireframe-layout tbody th {
+  background: #fbfcfc;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wireframe-layout .part-name { min-width: 210px; }
+.wireframe-layout .weapon-name { min-width: 230px; }
+.wireframe-layout .number { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wireframe-layout .compact,
+.wireframe-layout .traits { color: var(--muted); font-size: 12px; }
+.wireframe-layout .traits { min-width: 220px; }
+
+.table-combo-wrap { min-width: 180px; }
+.table-combo-field { display: block; }
+.table-combo-field input { min-height: 32px !important; padding: 6px 8px !important; }
+.wireframe-layout .suggestions {
+  border-color: var(--cyan);
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgb(31 41 51 / 18%);
+}
+.wireframe-layout .suggestion { color: var(--ink); }
+.wireframe-layout .suggestion:hover { background: #eaf5f6; color: var(--ink); }
+.wireframe-layout .no-suggestion { color: var(--muted); }
+
+.wireframe-layout .custom-details {
+  border-color: var(--line);
+  border-radius: 4px;
+  background: #f8fafb;
+}
+.wireframe-layout .custom-details summary { color: var(--accent-strong); }
+.wireframe-layout .custom-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.wireframe-layout .selected-info {
+  border-color: var(--cyan);
+  background: #f0f8f9;
+  color: var(--muted);
+}
+.wireframe-layout .selected-info b { color: var(--ink); }
+.table-remove {
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--red);
+}
+.table-remove:hover { background: #fff1f0; }
+
+.wireframe-layout .consumable-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.wireframe-layout .consumable-row .remove-row {
+  border-color: #d7b3b0;
+  background: #fff8f7;
+  color: var(--red);
+}
+.wireframe-layout .consumable-actions { margin-top: 10px; }
+.wireframe-layout .consumable-add-button { width: 100%; min-height: 34px; }
+
+.confirmation-section { padding-bottom: 0 !important; border-bottom: 0 !important; }
+.wireframe-layout .notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--green);
+  background: #f0f8f2;
+  color: #245a38;
+  font-size: 13px;
+}
+.wireframe-layout .notice strong { white-space: nowrap; }
+.wireframe-layout .notice ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wireframe-layout .notice li { display: grid; gap: 1px; }
+.wireframe-layout .notice li span { color: var(--muted); font-size: 12px; }
+.wireframe-layout .warning-notice { border-color: var(--red); background: #fff5f4; color: #8c332e; }
+
+.view-shell {
+  width: min(1220px, calc(100% - 40px));
+  margin: 0 auto 48px;
+}
+.view-shell .sheet-identity,
+.view-shell .view-section {
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  box-shadow: none;
+}
+.view-shell .sheet-identity {
+  padding: 26px 0 20px;
+  border-top: 0;
+  border-bottom: 2px solid var(--ink);
+}
+.view-shell .sheet-identity h2 { color: var(--accent); }
+.view-shell .view-image-stage {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--line);
+}
+.view-shell .image-flip-card {
+  width: min(480px, 100%);
+  perspective: 1200px;
+}
+.view-shell .image-flip-inner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  transform-style: preserve-3d;
+  transition: transform 460ms ease;
+}
+.view-shell .image-flip-card.is-flipped .image-flip-inner { transform: rotateY(180deg); }
+.view-shell .image-flip-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #f5f7f8;
+  backface-visibility: hidden;
+}
+.view-shell .image-flip-face img { width: 100%; height: 100%; object-fit: contain; }
+.view-shell .image-flip-face span {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 2px 6px;
+  background: rgb(255 255 255 / 86%);
+  color: var(--ink);
+  font-size: 11px;
+}
+.view-shell .image-flip-back { transform: rotateY(180deg); }
+.view-shell .image-flip-toggle {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+}
+.view-shell .image-flip-toggle:hover { border-color: var(--cyan); background: #effafa; }
+.view-shell .view-section { margin-top: 0; padding: 24px 0; }
+.view-shell .view-section-heading { border-color: var(--line); }
+.view-shell .view-section-heading h2 { color: var(--ink); font-size: 17px; }
+.view-shell .view-section-heading span { color: var(--muted); }
+.view-shell .view-stats {
+  border-color: var(--line);
+  border-radius: 0;
+}
+.view-shell .stat-card {
+  min-height: 82px;
+  border-color: var(--line);
+  background: #fff;
+}
+.view-shell .stat-card span,
+.view-shell .stat-card small,
+.view-shell th { color: var(--muted); }
+.view-shell .stat-card strong { color: var(--accent); }
+.view-shell thead th { background: #f5f7f8; }
+.view-shell .technique-card {
+  border-color: var(--line);
+  border-radius: 4px;
+  background: #f8fafb;
+}
+.view-shell .technique-card.weakness { border-color: #dfc7c4; background: #fff7f6; }
+.view-shell .technique-card > span { color: var(--cyan); }
+.view-shell .technique-card.weakness > span { color: var(--red); }
+.view-shell .technique-card p { color: var(--muted); }
+.view-shell .technique-card b { color: var(--accent-strong); }
+.view-shell .warning-panel { padding: 0; }
+.view-shell .warning-panel h3 { color: var(--accent-strong); }
+.view-shell .warning-panel li { border-color: var(--red); background: #fff5f4; }
+.view-shell .warning-panel li.good { border-color: var(--green); background: #f0f8f2; }
+.view-shell .warning-panel li span { color: var(--muted); }
+
+.page-footer { color: var(--muted); }
+
+@media (max-width: 900px) {
+  .topbar { padding: 10px 12px; align-items: flex-start; }
+  .topbar-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .save-indicator { display: none; }
+  .app-layout.wireframe-layout,
+  .view-shell { width: min(100% - 24px, 760px); }
+  .inline-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .inline-stat:nth-child(5) { border-left: 1px solid var(--line); }
+  .wireframe-layout .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  .brand h1 { font-size: 13px; }
+  .brand-mark { width: 38px; height: 38px; }
+  .edit-identity { grid-template-columns: 76px minmax(0, 1fr); gap: 14px; padding-top: 18px; }
+  .identity-copy h2 { font-size: 20px; }
+  .inline-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .inline-stat:nth-child(odd) { border-left: 1px solid var(--line); }
+  .wireframe-layout .form-grid,
+  .wireframe-layout .profile-memo-layout,
+  .wireframe-layout .image-editor-grid,
+  .wireframe-layout .build-grid,
+  .wireframe-layout .technique-grid,
+  .wireframe-layout .consumable-grid,
+  .wireframe-layout .custom-grid { grid-template-columns: 1fr; }
+  .wireframe-layout .technique-grid .field-wide { grid-column: auto; }
+  .wireframe-layout .notice { align-items: flex-start; }
+  .wireframe-layout .notice strong { white-space: normal; }
+  .wireframe-layout .image-editor-slot { grid-template-columns: minmax(0, 1fr) 132px; }
+  .view-shell .view-image-stage { align-items: flex-start; flex-direction: column; }
+  .view-shell .image-flip-card { width: min(100%, 480px); }
+  .view-shell .sheet-identity { grid-template-columns: 1fr; }
+  .view-shell .view-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-shell .image-flip-inner { transition: none; }
+}
+
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <input id="json-import" type="file" accept="application/json,.json" hidden />
+    <script>
+const dataModule = (() => {
+
+const BASE_STATS = Object.freeze({ ap: 30, action: 5, hit: 6, evade: 7, output: 4 });
+const STARTING_CREDITS = 100;
+
+const technique = (id, source, name, timing, description, options = []) => ({
+  id,
+  source,
+  name,
+  timing,
+  description,
+  options,
+  strength: "S",
+});
+
+const origins = [
+  {
+    id: "human",
+    name: "人間",
+    description: "機体負荷を抑え、安定的な機体の使用が可能。",
+    modifiers: { ap: 10 },
+    choice: { id: "humanBonus", label: "人間の補正", options: ["命中+1", "回避+1"] },
+    techniques: [
+      { ...technique("origin-human-tune", "出自", "パーツチューン", "開始前", "ミッション開始前に、武装1つの攻撃力+2または消費出力-1（0にはできない）を選ぶ。"), strength: "S" },
+      { ...technique("origin-human-cooldown", "出自", "アドバンス・クールダウン", "パッシブ", "APが0になった際、1度だけAP1で耐えられる。"), strength: "S" },
+      { ...technique("origin-human-special", "出自", "これがとっておきだ！", "アクティブ", "シナリオ1回。判定後に出たダイス目を反転できる。"), strength: "S" },
+      { id: "origin-human-limit", source: "出自", name: "物理的制約", timing: "パッシブ", description: "重量武装を使う際、移動後は使用できなくなる。", strength: "W" },
+    ],
+  },
+  {
+    id: "enhanced",
+    name: "強化人間",
+    description: "機体性能を限界まで引き出せるが、不安定かつコストがかかる。",
+    modifiers: { action: 1, output: 2 },
+    techniques: [
+      { ...technique("origin-enhanced-air", "出自", "空中挙動", "パッシブ", "本来移動後に使用不可能な武装を移動後または空中で使用可能。該当時の命中と空中回避に+1。"), strength: "S" },
+      { ...technique("origin-enhanced-photon", "出自", "フォトン・トレイル", "パッシブ", "ビーム属性の近接武装使用時、追加で出力1を消費して射程+1。攻撃ごとに宣言する。"), strength: "S" },
+      { ...technique("origin-enhanced-limit", "出自", "リミッター解除…起動！！", "アクティブ", "シナリオ1回。ターン中の出力消費を0、命中と回避+2。ただしターン終了時AP-10、次ターン出力半減。"), strength: "S" },
+      { id: "origin-enhanced-unstable", source: "出自", name: "精神的不安定", timing: "パッシブ", description: "1ゾロ時にオーバーヒートし、次ターンのジェネレーター出力が半分になる。", strength: "W" },
+      { id: "origin-enhanced-cost", source: "出自", name: "維持コスト", timing: "パッシブ", description: "報酬の資金から薬代・調整代として1割が引かれる。", strength: "W" },
+    ],
+  },
+];
+
+const classes = [
+  {
+    id: "assaulter",
+    name: "アサルター",
+    modifierLabel: "全武装の威力+2",
+    techniques: [
+      technique("class-assaulter-rapid", "アサルター", "ラピッド・ファイア", "パッシブ", "以下の効果から1つを選択する。選択後は変更不可扱い。", [
+        { id: "short", label: "近距離特化", description: "射程1〜3で攻撃時、ダメージ+2。常に回避-2。" },
+        { id: "long", label: "遠距離特化", description: "射程4以上で攻撃時、命中+2、ダメージ+1。常に行動値-1。" },
+      ]),
+      technique("class-assaulter-full", "アサルター", "フルスロットル", "アクティブ", "消費出力2。そのターンの命中判定+1、回避判定-2。"),
+      technique("class-assaulter-piercing", "アサルター", "ピアシング・アサルト", "アクティブ", "消費出力3。次に行う攻撃1回は装甲値を無視する。"),
+    ],
+  },
+  {
+    id: "operator",
+    name: "オペレーター",
+    modifierLabel: "命中+2",
+    modifiers: { hit: 2 },
+    techniques: [
+      technique("class-operator-link", "オペレーター", "高精度リンク結合", "パッシブ", "自分から3マス以内の自分以外の味方全員の命中判定+1。"),
+      technique("class-operator-scan", "オペレーター", "スキャン・アナライズ", "アクティブ", "消費出力1。敵1体を指定し、その敵への味方全員のダメージ+2。次ラウンド終了時まで。重複不可。"),
+      technique("class-operator-jamming", "オペレーター", "ジャミング・ウェーブ", "アクティブ", "消費出力2。敵1体の次の手番の命中判定-3。ラウンド1回。"),
+    ],
+  },
+  {
+    id: "medic",
+    name: "メディック",
+    modifierLabel: "AP回復効果+2",
+    techniques: [
+      technique("class-medic-doctor", "メディック", "フィールド・ドクター", "パッシブ", "緊急修理キットなどの消耗品効果を常に+3する。"),
+      technique("class-medic-repair", "メディック", "リペア・スプレー", "アクティブ", "消費出力2。自分または射程1〜3の相手のAPを2d6回復。ラウンド1回。"),
+      technique("class-medic-purge", "メディック", "緊急冷却パージ", "アクティブ", "消費出力1。視界内の味方1機のデバフまたはオーバーヒート1つを解除し、そのターンの回避+1。ラウンド1回。"),
+    ],
+  },
+  {
+    id: "vanguard",
+    name: "ヴァンガード",
+    modifierLabel: "回避または装甲+1（選択）",
+    techniques: [
+      technique("class-vanguard-defense", "ヴァンガード", "ディフェンス・セッティング", "パッシブ", "以下の効果から1つを選択する。", [
+        { id: "ap", label: "胴体AP+10", description: "装備している胴体パーツのAPに+10。" },
+        { id: "evade", label: "胴体回避+1", description: "装備している胴体パーツの回避に+1。" },
+      ]),
+      technique("class-vanguard-protect", "ヴァンガード", "プロテクト・アセット", "ダメージロール直後", "消費出力1。1〜2マス以内の味方が受けるダメージを自らに移す。ラウンド1回。"),
+      technique("class-vanguard-provoke", "ヴァンガード", "プロヴォック・サイン", "アクティブ", "消費出力2。敵1体が自分以外を攻撃する場合、その命中判定-4。次ターン終了時まで。"),
+    ],
+  },
+];
+
+const part = (id, slot, company, name, price, modifiers = {}, traits = "", type = "") => ({ id, slot, company, name, price, modifiers, traits, type });
+const weapon = (id, company, category, type, name, price, power, weight, output, range, attribute, traits = "", flags = []) => ({ id, company, category, type, name, price, power, weight, output, range, attribute, traits, flags });
+
+const parts = [
+  part("head-yatagarasu", "head", "稜威重工", "八咫烏", 8, { hit: 0, action: -1, ap: 10 }),
+  part("torso-fudo", "torso", "稜威重工", "不動", 18, { ap: 20, load: 10, output: -1, armor: 7 }),
+  part("legs-kongo", "legs", "稜威重工", "金剛", 20, { evade: -2, action: -2, ap: 15, load: 30 }, "", "タンク"),
+  part("legs-gozen", "legs", "稜威重工", "御前", 22, { evade: -2, action: -3, load: 25, armor: 1 }, "移動後使用不可能な武装も使用可能。", "タンク"),
+  part("legs-yamato", "legs", "稜威重工", "大和", 16, { evade: -1, action: -1, ap: 10, load: 22 }, "近接武装の攻撃力+2。", "重二脚"),
+  part("generator-kurogane", "generator", "稜威重工", "黒鉄", 14, { output: 4 }, "胴体パーツの出力修正を0に変更。"),
+  part("head-shingan", "head", "シキシマニューロニクス", "心眼-No.003", 12, { hit: 1, action: 1, ap: 0 }),
+  part("torso-nichirin", "torso", "シキシマニューロニクス", "日輪", 10, { ap: 5, load: 5, output: -1, armor: 3 }),
+  part("legs-murakumo", "legs", "シキシマニューロニクス", "叢雲", 14, { evade: 1, action: 1, load: 15 }, "回避失敗時、出力1を消費してダメージ半減。ラウンド1回。", "中二脚"),
+  part("legs-karasutengu", "legs", "シキシマニューロニクス", "烏天狗", 16, { evade: 0, action: 2, load: 18 }, "ホバリング時、命中+2。", "多脚"),
+  part("generator-tsukuyomi", "generator", "シキシマニューロニクス", "月読", 20, { output: 1 }, "技巧1つを選び、その消費出力-1（0にはならない）。"),
+  part("head-epiphany", "head", "ヴェリタス・ダイナミクス", "エピファニー", 14, { hit: 1, action: 2, ap: -5 }),
+  part("torso-thesaurus", "torso", "ヴェリタス・ダイナミクス", "シソーラス", 16, { ap: -5, load: 3, output: 3, armor: 3 }, "武装の消費出力-1。"),
+  part("legs-wisp", "legs", "ヴェリタス・ダイナミクス", "ウィスプ", 12, { evade: 3, action: 2, load: 8 }, "", "軽二脚"),
+  part("legs-feather", "legs", "ヴェリタス・ダイナミクス", "フェザー", 18, { evade: 2, action: 3, ap: -10, load: 7 }, "出力2を消費して障害物を無視。", "逆関節"),
+  part("generator-eternal", "generator", "ヴェリタス・ダイナミクス", "エターナル", 20, { output: 3, armor: -2 }, "ビーム属性の武装ダメージ+3。"),
+  part("head-antler", "head", "アルビオン・ジェネティクス", "アントラー", 10, { hit: 1, action: 0, ap: 5 }),
+  part("torso-slug", "torso", "アルビオン・ジェネティクス", "スラッグ", 14, { ap: 10, load: 8, output: 0, armor: 5 }),
+  part("legs-scarab", "legs", "アルビオン・ジェネティクス", "スカラベ", 13, { evade: 2, action: 1, load: 12 }, "", "逆関節"),
+  part("legs-arachne", "legs", "アルビオン・ジェネティクス", "アーラクネ", 15, { evade: 1, action: 1, load: 16 }, "", "多脚"),
+  part("generator-cell-core", "generator", "アルビオン・ジェネティクス", "セル・コア", 16, { output: 2 }, "ターン終了時、余った出力1につきAPを2回復。"),
+  part("head-brutus", "head", "ノクティス・アイアンワークス", "ブルータス", 9, { hit: 1, action: -1, ap: 5 }),
+  part("torso-obelisk", "torso", "ノクティス・アイアンワークス", "オベリスク", 15, { ap: 15, output: 1, armor: 6, load: 10 }),
+  part("legs-iron-soul", "legs", "ノクティス・アイアンワークス", "アイアンソウル", 14, { evade: 0, action: 0, load: 20 }, "", "中二脚"),
+  part("legs-hulk", "legs", "ノクティス・アイアンワークス", "ハルク", 17, { evade: -1, action: -1, load: 25 }, "", "重二脚"),
+  part("generator-iron-heart", "generator", "ノクティス・アイアンワークス", "アイアンハート", 10, { output: 1 }, "実弾属性の武装使用時、命中判定+1。"),
+  part("head-stratos", "head", "イーサ・エアロスペース", "ストラトス", 13, { hit: 0, action: 2, ap: 0 }),
+  part("torso-uriel", "torso", "イーサ・エアロスペース", "ウリエル", 15, { ap: 0, output: 2, armor: 2, load: 5 }, "ホバリング移動時、回避判定+1。"),
+  part("legs-sky-eye", "legs", "イーサ・エアロスペース", "スカイアイ", 17, { evade: 1, action: 3, load: 14 }, "ホバリング時、クイックブーストを出力1で1ターン2回まで使用可能。", "多脚"),
+  part("legs-comet", "legs", "イーサ・エアロスペース", "コメット", 20, { evade: 2, action: 4, load: 10 }, "回避判定に行動値の4分の1（切り上げ）を追加可能。1ターン2回。", "軽二脚"),
+  part("generator-solar-sail", "generator", "イーサ・エアロスペース", "ソーラーセイル", 17, { output: 3 }, "ホバリング移動でターンを終えた場合、次ターンの出力+1。"),
+  part("head-hephaestus", "head", "プロメテウス・インダストリーズ", "ヘパイストス", 10, { hit: 0, action: 0, ap: 5 }),
+  part("torso-hestia", "torso", "プロメテウス・インダストリーズ", "ヘステイア", 17, { ap: 10, output: 2, armor: 3, load: 12 }),
+  part("legs-bulldozer", "legs", "プロメテウス・インダストリーズ", "ブルドーザー", 20, { evade: -3, action: -2, ap: 20, load: 35 }, "", "タンク"),
+  part("legs-workman", "legs", "プロメテウス・インダストリーズ", "ワークマン", 13, { evade: -1, action: -1, load: 18 }, "この機体に対する回復量+2。", "中二脚"),
+  part("generator-bigbang", "generator", "プロメテウス・インダストリーズ", "ビックバング", 15, { output: 5 }, "戦闘開始時に1d6。2以下ならそのターンの出力-3。"),
+];
+
+const weapons = [
+  weapon("weapon-samidare", "稜威重工", "light", "ハンドガン", "五月雨", 3, "4", 5, 1, "1〜3", "実弾", "命中時に2回分のダメージを与える。"),
+  weapon("weapon-sekiranun", "稜威重工", "light", "ショットガン", "積乱雲", 5, "9", 9, 1, "1〜2", "実弾", "射程1で命中した場合、ダメージ+3。"),
+  weapon("weapon-type3", "稜威重工", "light", "アサルトライフル", "三式・突撃銃", 5, "7", 8, 1, "2〜4", "実弾"),
+  weapon("weapon-nubeki", "稜威重工", "light", "アサルトライフル", "不抜", 8, "6", 6, 1, "2〜4", "実弾", "使用後、そのターンの回避-1。"),
+  weapon("weapon-goriki", "稜威重工", "heavy", "キャノン", "剛力・改二", 10, "2d6+10", 15, 2, "4〜6", "実弾", "攻撃後、タンク脚以外は回避不可。"),
+  weapon("weapon-amakudari", "稜威重工", "heavy", "キャノン", "天降", 18, "20", 18, 6, "5〜10", "実弾", "移動後使用不可。この制限は技巧などでも無視できない。"),
+  weapon("weapon-kantetsu", "稜威重工", "heavy", "スナイパーライフル", "貫徹", 12, "10", 10, 2, "4〜8", "実弾", "命中時、対象を直線2マス移動。"),
+  weapon("weapon-bakuretsu", "稜威重工", "heavy", "ミサイル", "爆裂", 10, "7", 8, 2, "3〜5", "実弾", "命中時、隣接マスにも1d6ダメージ。"),
+  weapon("weapon-tessaku", "稜威重工", "heavy", "オートタレット", "鉄柵", 13, "5", 6, 2, "1〜4", "実弾", "設置武装。隣または同マスで攻撃されると5ダメージまで軽減し、1点でも発動すると破壊。"),
+  weapon("weapon-muramasa", "稜威重工", "melee", "ブレード", "村正", 15, "2d6+12", 8, 2, "1", "実弾", "命中-2。"),
+  weapon("weapon-hagan", "稜威重工", "melee", "大槌", "破岩", 10, "14", 15, 2, "1", "実弾", "命中時、対象の装甲値-5。重複不可。"),
+  weapon("weapon-iwao", "稜威重工", "special", "大盾", "巌", 18, "0", 12, 0, "-", "-", "装備中、装甲値+3。軽量武装1つを装備できなくなる。", ["reduces-light"]),
+  weapon("weapon-kokuin", "シキシマニューロニクス", "light", "ハンドガン", "刻印", 5, "2", 2, 1, "1〜3", "実弾", "この武装での命中判定+2。"),
+  weapon("weapon-shikou", "シキシマニューロニクス", "light", "アサルトライフル", "思考", 10, "3", 4, 2, "2〜4", "実弾", "命中判定+1。クリティカル時、ダメージ+2d6。"),
+  weapon("weapon-kyokkou", "シキシマニューロニクス", "heavy", "スナイパーライフル", "極光", 12, "6", 5, 5, "5〜10", "ビーム", "命中判定時、常にダイス+1。"),
+  weapon("weapon-kokuu", "シキシマニューロニクス", "heavy", "キャノン", "虚空:指向性弾", 15, "0", 6, 4, "2〜5", "ビーム", "ダメージの代わりに対象の出力を1d6消費。2回目以降は命中修正-4。"),
+  weapon("weapon-chidori", "シキシマニューロニクス", "heavy", "ミサイル", "千鳥", 13, "8", 7, 3, "3〜6", "実弾", "遮蔽物無視。この武装への回避判定-1。"),
+  weapon("weapon-kanshi", "シキシマニューロニクス", "heavy", "オートタレット", "監視", 14, "2", 2, 3, "1〜4", "ビーム", "使用時、次ターン終了まで自身の回避+1。"),
+  weapon("weapon-dengen", "シキシマニューロニクス", "melee", "ワイヤー", "電幻", 12, "4", 3, 2, "1〜3", "ビーム", "命中時、対象を1マス自分へ引き寄せる。"),
+  weapon("weapon-scope", "シキシマニューロニクス", "special", "スコープ", "高精度狙撃スコープ", 16, "-", 6, 3, "-", "-", "キャノンまたはスナイパーライフルと同時使用。判定をクリティカルにしダメージ+5。戦闘1回。装備中は行動値-2、軽量武装1つを装備不可。", ["requires-sniper-or-cannon", "reduces-light", "action-minus-2"]),
+  weapon("weapon-tenka", "ヴェリタス・ダイナミクス", "light", "ハンドガン", "点火", 8, "3", 2, 2, "1〜2", "ビーム", "命中後、対象の出力を1d3消費させる。"),
+  weapon("weapon-kakusan", "ヴェリタス・ダイナミクス", "light", "ショットガン", "拡散", 12, "6", 5, 4, "1〜2", "ビーム", "射程内の対象全てに攻撃可能。"),
+  weapon("weapon-ruten", "ヴェリタス・ダイナミクス", "light", "アサルトライフル", "流転", 13, "5", 4, 3, "2〜4", "ビーム", "追加で出力2を消費してダメージ+3。"),
+  weapon("weapon-tokuiten", "ヴェリタス・ダイナミクス", "heavy", "スナイパーライフル", "特異点", 14, "7", 8, 6, "5〜8", "ビーム", "命中時、対象を自身へ2マス引き寄せる。"),
+  weapon("weapon-kourin", "ヴェリタス・ダイナミクス", "heavy", "ミサイル", "光輪", 20, "8", 6, 4, "3〜6", "ビーム", "この武装に対する回避判定-3。"),
+  weapon("weapon-danzai", "ヴェリタス・ダイナミクス", "heavy", "キャノン", "断罪", 25, "25", 15, 12, "4〜15", "ビーム", "射程上全ての敵を攻撃可能。次ターン出力0。"),
+  weapon("weapon-kouheki", "ヴェリタス・ダイナミクス", "heavy", "オートタレット", "光壁", 15, "1", 3, 5, "1〜2", "ビーム", "使用後、次ターン終了まで装甲値+5。"),
+  weapon("weapon-shinri", "ヴェリタス・ダイナミクス", "melee", "ブレード", "真理", 10, "10", 3, 3, "1", "ビーム"),
+  weapon("weapon-seisou", "ヴェリタス・ダイナミクス", "melee", "ブレード", "星霜:ツインブレード", 15, "12", 4, 5, "1", "未記載", "命中判定を2回行い、両方命中した場合ダメージ+5。", ["uncertain-attribute"]),
+  weapon("weapon-koujou", "ヴェリタス・ダイナミクス", "melee", "ランス", "光条･牙突", 15, "6", 6, 3, "1", "ビーム", "アサルトブースト後ならダメージ+3、回避-2。"),
+  weapon("weapon-barrier", "ヴェリタス・ダイナミクス", "special", "バリア", "位相偏向器", 18, "-", 5, 4, "-", "-", "使用後3ターン持続。使用中はビーム属性武装を使用不可、重量武装を装備不可。", ["forbids-heavy", "forbids-beam"]),
+  weapon("weapon-shinkei", "アルビオン・ジェネティクス", "light", "ハンドガン", "神経", 8, "1", 2, 1, "1〜2", "実弾", "命中時、対象の命中判定-2。重複不可。"),
+  weapon("weapon-youkai", "アルビオン・ジェネティクス", "light", "ショットガン", "溶解", 10, "4", 5, 2, "1〜2", "実弾", "命中後3ターン、対象のターン開始時に1d6装甲貫通ダメージ。"),
+  weapon("weapon-zoushoku", "アルビオン・ジェネティクス", "light", "アサルトライフル", "増殖", 12, "3", 4, 1, "2〜4", "実弾", "クリティカル時、次ターン対象は行動不可。"),
+  weapon("weapon-kisei", "アルビオン・ジェネティクス", "heavy", "スナイパーライフル", "寄生", 15, "5", 6, 3, "4〜8", "実弾", "ダメージが入ると対象の出力最大値-1。戦闘終了まで。最大-3。"),
+  weapon("weapon-kyouran", "アルビオン・ジェネティクス", "heavy", "ミサイル", "狂乱", 13, "6", 5, 3, "3〜5", "実弾", "回避失敗時、先に4ダメージ。装甲適用可。"),
+  weapon("weapon-houkou", "アルビオン・ジェネティクス", "heavy", "キャノン", "咆哮", 15, "10", 12, 4, "3〜6", "実弾", "着弾地点周囲1マスに酸の雲を1d6ターン形成。"),
+  weapon("weapon-gankyuu", "アルビオン・ジェネティクス", "heavy", "オートタレット", "眼球", 12, "2", 2, 2, "1〜4", "実弾", "着弾地点周囲1マスの敵に次の回避-2。"),
+  weapon("weapon-spore", "アルビオン・ジェネティクス", "special", "スモーク", "スポア・スモッグ", 14, "-", 4, 3, "0〜3", "-", "装備中は行動値-1、軽量武装1つを装備不可。", ["reduces-light", "action-minus-1"]),
+  weapon("weapon-rouhei", "ノクティス・アイアンワークス", "light", "ハンドガン", "老兵", 7, "3", 3, 0, "1〜2", "実弾", "命中判定+2、命中後に対象の行動値-2。重複不可。"),
+  weapon("weapon-dansou", "ノクティス・アイアンワークス", "light", "ショットガン", "断層", 10, "8", 7, 1, "1〜2", "実弾", "射程1で攻撃時、命中判定+2。"),
+  weapon("weapon-gekitetu", "ノクティス・アイアンワークス", "light", "アサルトライフル", "撃鉄", 9, "5", 5, 1, "2〜4", "実弾", "命中判定+1。"),
+  weapon("weapon-jihibiki", "ノクティス・アイアンワークス", "heavy", "スナイパーライフル", "地響", 10, "8", 10, 1, "4〜7", "実弾", "命中時、対象を使用者と反対方向へ1マス移動。"),
+  weapon("weapon-ren-gan", "ノクティス・アイアンワークス", "heavy", "ミサイル", "連岩", 11, "6", 6, 2, "3〜5", "実弾", "対象の回避判定-1。"),
+  weapon("weapon-tekka", "ノクティス・アイアンワークス", "heavy", "キャノン", "鉄塊", 16, "12", 10, 2, "2〜5", "実弾", "例外的に移動後も使用可能。"),
+  weapon("weapon-kouban", "ノクティス・アイアンワークス", "heavy", "オートタレット", "鋼板", 13, "4", 6, 2, "1〜4", "実弾", "使用後、自身へのダメージを3点軽減。1ラウンド3回。"),
+  weapon("weapon-zekkou", "ノクティス・アイアンワークス", "melee", "パイルバンカー", "絶口", 13, "18", 12, 0, "1", "実弾", "命中-2。"),
+  weapon("weapon-sensaku", "ノクティス・アイアンワークス", "melee", "チェンソー", "旋削", 12, "12", 9, 0, "1", "実弾", "命中-2。命中時、相手の装甲を-2してダメージ算出。"),
+  weapon("weapon-ammo-box", "ノクティス・アイアンワークス", "special", "増加弾倉", "増設弾薬箱", 12, "-", 5, 0, "-", "-", "装備中は行動値-2。実弾の命中とダメージ+1。軽量または重量武装1つを装備不可。", ["action-minus-2", "needs-slot-choice"]),
+  weapon("weapon-mabataki", "イーサ・エアロスペース", "light", "ハンドガン", "瞬き", 8, "2", 1, 1, "1〜2", "実弾", "1ターンに命中低下なしで3回まで射撃可能。"),
+  weapon("weapon-toppuu", "イーサ・エアロスペース", "light", "ショットガン", "突風", 12, "3", 3, 1, "1〜2", "実弾", "ダメージロール後、自身を1マス移動。"),
+  weapon("weapon-yokka", "イーサ・エアロスペース", "light", "アサルトライフル", "翼下", 14, "4", 2, 1, "2〜4", "実弾", "ホバリング移動時、命中+1、ダメージ+2。"),
+  weapon("weapon-tengan", "イーサ・エアロスペース", "heavy", "スナイパーライフル", "天眼", 14, "5", 4, 3, "5〜10", "実弾", "使用後、射程内の敵に対する味方3人までの命中判定+1。次ターン終了まで。"),
+  weapon("weapon-uteki", "イーサ・エアロスペース", "heavy", "ミサイル", "雨滴", 13, "3", 2, 2, "2〜5", "実弾", "着弾地点範囲1マスをまとめて対象にできる。"),
+  weapon("weapon-rakurai", "イーサ・エアロスペース", "heavy", "キャノン", "落雷", 14, "12", 6, 4, "3〜6", "ビーム", "ホバリング移動時のみ使用可能。範囲2マスに1d3装甲貫通ダメージ。"),
+  weapon("weapon-ukigumo", "イーサ・エアロスペース", "heavy", "オートタレット", "浮雲", 12, "1", 3, 2, "1〜3", "ビーム", "使用後3ターン、手番開始時に射程内の敵1名へ出力消費なしで攻撃可能。"),
+  weapon("weapon-senpu", "イーサ・エアロスペース", "melee", "ワイヤー", "旋風", 10, "4", 2, 2, "1〜3", "実弾", "命中+1。対象の行動値が低ければダメージ+5。"),
+  weapon("weapon-booster", "イーサ・エアロスペース", "special", "ブースター", "超高機動用ブースター", 17, "-", 5, 2, "-", "-", "戦闘中3回。アサルトブーストの移動+5、移動後ダメージ+5、使用後回避-5。装備中は行動値-2。", ["action-minus-2"]),
+  weapon("weapon-funsai", "プロメテウス・インダストリーズ", "light", "ショットガン", "粉砕", 10, "11", 9, 2, "1", "実弾", "攻撃後2d6で3以下なら次ターン終了まで使用不可。"),
+  weapon("weapon-sosei", "プロメテウス・インダストリーズ", "light", "アサルトライフル", "粗製", 8, "8", 6, 2, "2〜4", "実弾", "攻撃時、APを1消費。"),
+  weapon("weapon-roshin", "プロメテウス・インダストリーズ", "heavy", "キャノン", "炉心", 18, "22", 18, 7, "3〜6", "実弾", "使用後、ターン終了まで回避と行動値-4。"),
+  weapon("weapon-hinotori", "プロメテウス・インダストリーズ", "heavy", "ミサイル", "火の鳥", 13, "9", 7, 3, "3〜6", "実弾", "判定後1d6で1なら自分に着弾。"),
+  weapon("weapon-shinkan", "プロメテウス・インダストリーズ", "heavy", "オートタレット", "信管", 7, "10", 4, 1, "1〜2", "実弾", "設置後、敵が範囲1マスに侵入すると爆発。設置時に2が出た場合その場で爆発。"),
+  weapon("weapon-moonblade", "プロメテウス・インダストリーズ", "melee", "ブレード", "月光刃:試作", 10, "7", 5, 3, "1〜2", "ビーム", "近接武装として分類される。"),
+  weapon("weapon-nessou", "プロメテウス・インダストリーズ", "melee", "バーナー", "熱葬", 12, "15", 8, 3, "1", "実弾", "命中時、敵の装甲を半分としてダメージ算出。1d6で2以下なら自分に5ダメージ。"),
+  weapon("weapon-cooling-tank", "プロメテウス・インダストリーズ", "special", "冷却材", "緊急冷却タンク", 15, "-", 6, 2, "-", "-", "プロメテウスのパーツ使用時のダイスを、出力2で戦闘3回まで振り直し可能。"),
+];
+
+const consumables = [
+  { id: "item-repair", name: "緊急修理キット", price: 5, timing: "アクティブ", effect: "APを10点回復。1ターン使用。使い捨て。" },
+  { id: "item-battery", name: "予備バッテリー", price: 3, timing: "アクティブ", effect: "使用したターンの出力+3。使い捨て。" },
+  { id: "item-booster", name: "追加ブースター", price: 4, timing: "アクティブ", effect: "使用したターンの回避+2。使い捨て。" },
+  { id: "item-fcs", name: "高精度FCSプラグ", price: 4, timing: "アクティブ", effect: "使用したターンの命中+2。使い捨て。" },
+  { id: "item-coolant", name: "耐熱冷却材", price: 2, timing: "アクティブ", effect: "炎上、オーバーヒートを即座に解除。" },
+];
+
+const SLOT_LABELS = { head: "頭部", torso: "胴体", legs: "脚部", generator: "ジェネレーター" };
+const CATEGORY_LABELS = { light: "軽量武装", heavy: "重量武装", melee: "近接武装", special: "背部特殊武装" };
+
+const findById = (list, id) => list.find((entry) => entry.id === id) ?? null;
+const findPart = (id) => findById(parts, id);
+const findWeapon = (id) => findById(weapons, id);
+const findConsumable = (id) => findById(consumables, id);
+const findClass = (id) => findById(classes, id);
+const findOrigin = (id) => findById(origins, id);
+const allClassTechniques = () => classes.flatMap((entry) => entry.techniques);
+
+return { BASE_STATS, STARTING_CREDITS, origins, classes, parts, weapons, consumables, SLOT_LABELS, CATEGORY_LABELS, findById, findPart, findWeapon, findConsumable, findClass, findOrigin, allClassTechniques };
+})();
+
+const logicModule = (() => {
+const { BASE_STATS, STARTING_CREDITS, origins, classes, parts, weapons, consumables, SLOT_LABELS, CATEGORY_LABELS, findById, findPart, findWeapon, findConsumable, findClass, findOrigin, allClassTechniques } = dataModule;
+
+const PART_SLOTS = ["head", "torso", "legs", "generator"];
+const num = (value) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const valueOr = (value, fallback = 0) => num(value) ?? fallback;
+const clone = (value) => JSON.parse(JSON.stringify(value));
+const customPart = () => ({ name: "", company: "", price: "", ap: "", action: "", hit: "", evade: "", output: "", load: "", armor: "", type: "", traits: "" });
+const customWeapon = () => ({ name: "", company: "", category: "light", type: "", price: "", power: "", weight: "", output: "", range: "", attribute: "", traits: "" });
+const customConsumable = () => ({ name: "", price: "", timing: "", effect: "" });
+
+function createDefaultState() {
+  return {
+    schemaVersion: 1,
+    updatedAt: "",
+    meta: { pilotName: "", machineName: "", playerName: "", memo: "" },
+    origin: "human",
+    humanBonus: "evade",
+    classes: { main: "", sub: "", vanguardBonus: "evade" },
+    parts: Object.fromEntries(PART_SLOTS.map((slot) => [slot, { id: "", custom: customPart() }])),
+    weapons: Array.from({ length: 4 }, () => ({ id: "", custom: customWeapon() })),
+    consumables: [{ id: "", custom: customConsumable() }],
+    techniques: { passive: "", active: ["", ""], choices: {} },
+  };
+}
+
+function hydrateState(candidate) {
+  const base = createDefaultState();
+  if (!candidate || typeof candidate !== "object") return base;
+  const state = clone(base);
+  state.schemaVersion = 1;
+  state.updatedAt = typeof candidate.updatedAt === "string" ? candidate.updatedAt : "";
+  state.meta = { ...base.meta, ...(candidate.meta ?? {}) };
+  state.origin = typeof candidate.origin === "string" ? candidate.origin : base.origin;
+  state.humanBonus = candidate.humanBonus === "hit" ? "hit" : "evade";
+  state.classes = { ...base.classes, ...(candidate.classes ?? {}) };
+  for (const slot of PART_SLOTS) {
+    const source = candidate.parts?.[slot] ?? {};
+    state.parts[slot] = { id: typeof source.id === "string" ? source.id : "", custom: { ...customPart(), ...(source.custom ?? {}) } };
+  }
+  state.weapons = Array.from({ length: 4 }, (_, index) => {
+    const source = candidate.weapons?.[index] ?? {};
+    return { id: typeof source.id === "string" ? source.id : "", custom: { ...customWeapon(), ...(source.custom ?? {}) } };
+  });
+  const consumableSources = Array.isArray(candidate.consumables)
+    ? candidate.consumables.filter((entry) => entry?.id || Object.values(entry?.custom ?? {}).some((value) => String(value ?? "").trim()))
+    : base.consumables;
+  state.consumables = (consumableSources.length ? consumableSources : base.consumables).map((source) => {
+    return { id: typeof source.id === "string" ? source.id : "", custom: { ...customConsumable(), ...(source.custom ?? {}) } };
+  });
+  state.techniques = { ...base.techniques, ...(candidate.techniques ?? {}), choices: { ...(candidate.techniques?.choices ?? {}) } };
+  state.techniques.active = Array.from({ length: 2 }, (_, index) => candidate.techniques?.active?.[index] ?? "");
+  return state;
+}
+
+function resolvePart(entry, slot) {
+  const selected = entry?.id ? findPart(entry.id) : null;
+  if (selected) return selected;
+  const custom = entry?.custom ?? customPart();
+  if (!custom.name.trim()) return null;
+  return {
+    id: `custom-${slot}`,
+    slot,
+    company: custom.company || "カスタム",
+    name: custom.name,
+    price: num(custom.price),
+    modifiers: {
+      ap: valueOr(custom.ap), action: valueOr(custom.action), hit: valueOr(custom.hit), evade: valueOr(custom.evade),
+      output: valueOr(custom.output), load: valueOr(custom.load), armor: valueOr(custom.armor),
+    },
+    traits: custom.traits,
+    type: custom.type,
+    isCustom: true,
+  };
+}
+
+function resolveWeapon(entry) {
+  const selected = entry?.id ? findWeapon(entry.id) : null;
+  if (selected) return selected;
+  const custom = entry?.custom ?? customWeapon();
+  if (!custom.name.trim()) return null;
+  return {
+    id: "custom-weapon",
+    company: custom.company || "カスタム",
+    category: custom.category || "light",
+    type: custom.type || "未設定",
+    name: custom.name,
+    price: num(custom.price),
+    power: custom.power || "未設定",
+    weight: num(custom.weight),
+    output: num(custom.output),
+    range: custom.range || "未設定",
+    attribute: custom.attribute || "未設定",
+    traits: custom.traits,
+    flags: [],
+    isCustom: true,
+  };
+}
+
+function resolveConsumable(entry) {
+  const selected = entry?.id ? findConsumable(entry.id) : null;
+  if (selected) return selected;
+  const custom = entry?.custom ?? customConsumable();
+  if (!custom.name.trim()) return null;
+  return { id: "custom-item", name: custom.name, price: num(custom.price), timing: custom.timing || "未設定", effect: custom.effect || "", isCustom: true };
+}
+
+const findTechnique = (id) => allClassTechniques().find((item) => item.id === id) ?? null;
+const selectedTechniqueIds = (state) => [state.techniques.passive, ...state.techniques.active].filter(Boolean);
+const hasTechnique = (state, id) => selectedTechniqueIds(state).includes(id);
+const addWarning = (list, code, title, detail) => list.push({ code, title, detail });
+const formatSigned = (value) => (value > 0 ? `+${value}` : String(value));
+
+function calculate(state) {
+  const warnings = [];
+  const notices = [
+    { title: "未確定ルール", detail: "脚部制限の意味とメイン/サブ同一クラスの可否は、現時点では確定していません。" },
+    { title: "ローカル下書き", detail: "このブラウザ内に自動保存します。JSON出力は明示操作のときだけ行います。" },
+  ];
+  const resolvedParts = Object.fromEntries(PART_SLOTS.map((slot) => [slot, resolvePart(state.parts[slot], slot)]));
+  const resolvedWeapons = state.weapons.map(resolveWeapon);
+  const resolvedConsumables = state.consumables.map(resolveConsumable);
+  const origin = findOrigin(state.origin) ?? findOrigin("human");
+  const mainClass = findClass(state.classes.main);
+  const subClass = findClass(state.classes.sub);
+
+  const statAdjustments = { ap: 0, action: 0, hit: 0, evade: 0, output: 0, armor: 0, load: 0 };
+  const breakdown = Object.fromEntries(Object.keys(statAdjustments).map((key) => [key, []]));
+  const add = (key, amount, label) => {
+    if (!amount) return;
+    statAdjustments[key] += amount;
+    breakdown[key].push({ label, amount });
+  };
+
+  for (const [slot, item] of Object.entries(resolvedParts)) {
+    if (!item) continue;
+    for (const [key, amount] of Object.entries(item.modifiers ?? {})) add(key, amount, `${SLOT_LABELS[slot]}: ${item.name}`);
+    if (item.isCustom) {
+      for (const key of ["price", "ap", "action", "hit", "evade", "output", "load", "armor"]) {
+        if (key === "price" ? item.price === null : state.parts[slot].custom[key] === "") {
+          addWarning(warnings, `custom-part-${slot}-${key}`, "カスタムパーツの数値が不足", `${SLOT_LABELS[slot]}「${item.name}」の${key === "price" ? "価格" : key}が未入力です。`);
+        }
+      }
+    }
+  }
+  if (resolvedParts.generator?.id === "generator-kurogane" && resolvedParts.torso) {
+    const torsoOutput = resolvedParts.torso.modifiers.output ?? 0;
+    if (torsoOutput) {
+      statAdjustments.output -= torsoOutput;
+      breakdown.output = breakdown.output.filter((item) => item.label !== `胴体: ${resolvedParts.torso.name}`);
+      breakdown.output.push({ label: "黒鉄: 胴体出力修正を0", amount: -torsoOutput });
+    }
+  }
+  for (const [key, amount] of Object.entries(origin.modifiers ?? {})) add(key, amount, `出自: ${origin.name}`);
+  if (origin.id === "human") add(state.humanBonus, 1, "人間の選択補正");
+  if (mainClass?.id === "operator") add("hit", 2, "メイン: オペレーター");
+  if (mainClass?.id === "vanguard") add(state.classes.vanguardBonus === "armor" ? "armor" : "evade", 1, "メイン: ヴァンガード");
+  if (hasTechnique(state, "class-assaulter-rapid")) {
+    const option = state.techniques.choices["class-assaulter-rapid"];
+    if (option === "short") add("evade", -2, "ラピッド・ファイア（近距離特化）");
+    if (option === "long") add("action", -1, "ラピッド・ファイア（遠距離特化）");
+  }
+  if (hasTechnique(state, "class-vanguard-defense")) {
+    const option = state.techniques.choices["class-vanguard-defense"];
+    if (option === "ap") add("ap", 10, "ディフェンス・セッティング（AP）");
+    if (option === "evade") add("evade", 1, "ディフェンス・セッティング（回避）");
+  }
+  for (const item of resolvedWeapons.filter(Boolean)) {
+    if (item.flags?.includes("action-minus-2")) add("action", -2, `${item.name}: 装備中修正`);
+    if (item.flags?.includes("action-minus-1")) add("action", -1, `${item.name}: 装備中修正`);
+    if (item.id === "weapon-iwao") add("armor", 3, "巌: 装備中修正");
+  }
+
+  const stats = {
+    ap: BASE_STATS.ap + statAdjustments.ap,
+    action: BASE_STATS.action + statAdjustments.action,
+    hit: BASE_STATS.hit + statAdjustments.hit,
+    evade: BASE_STATS.evade + statAdjustments.evade,
+    output: BASE_STATS.output + statAdjustments.output,
+    armor: statAdjustments.armor,
+    load: statAdjustments.load,
+  };
+  const generatorOutput = resolvedParts.generator?.modifiers?.output ?? 0;
+  const outputRecovery = generatorOutput + 2;
+
+  const equippedWeapons = resolvedWeapons.filter(Boolean);
+  const categoryCounts = { light: 0, heavy: 0, melee: 0, special: 0 };
+  for (const item of equippedWeapons) categoryCounts[item.category] = (categoryCounts[item.category] ?? 0) + 1;
+  const lightLike = categoryCounts.light + categoryCounts.melee;
+  const heavyLike = categoryCounts.heavy + categoryCounts.special;
+  const reducedWeaponSlots = equippedWeapons.reduce((count, item) => count + (item.flags?.includes("reduces-light") ? 1 : 0), 0);
+  const limits = { total: 4 - reducedWeaponSlots, light: 4, heavy: 2, melee: 1, special: 1 };
+  const totalWeight = equippedWeapons.reduce((sum, item) => sum + (item.weight ?? 0), 0);
+  const hasUnknownWeight = equippedWeapons.some((item) => item.weight === null);
+  const remainingLoad = stats.load - totalWeight;
+  const damageBonusFor = (item) => {
+    let amount = 0;
+    if (mainClass?.id === "assaulter") amount += 2;
+    if (resolvedParts.legs?.id === "legs-yamato" && item.category === "melee") amount += 2;
+    if (resolvedParts.generator?.id === "generator-eternal" && item.attribute === "ビーム") amount += 3;
+    if (equippedWeapons.some((weapon) => weapon.id === "weapon-ammo-box") && item.attribute === "実弾") amount += 1;
+    if (hasTechnique(state, "class-assaulter-rapid") && state.techniques.choices["class-assaulter-rapid"] === "short") amount += 2;
+    if (hasTechnique(state, "class-assaulter-rapid") && state.techniques.choices["class-assaulter-rapid"] === "long") amount += 1;
+    return amount;
+  };
+  const weaponsWithBonuses = resolvedWeapons.map((item) => item ? { ...item, damageBonus: damageBonusFor(item) } : null);
+
+  if (mainClass && subClass && mainClass.id === subClass.id) addWarning(warnings, "same-class", "メインとサブが同一クラス", "同一クラス選択の可否は製作者未確認です。現状は保存できます。 ");
+  for (const slot of PART_SLOTS) if (!resolvedParts[slot]) addWarning(warnings, `missing-${slot}`, "未選択の構成パーツ", `${SLOT_LABELS[slot]}を選択またはカスタム入力してください。`);
+  if (equippedWeapons.length > limits.total) {
+    const restrictedNames = equippedWeapons.filter((item) => item.flags?.includes("reduces-light")).map((item) => `「${item.name}」`).join("、");
+    const detail = restrictedNames
+      ? `${restrictedNames}は背部特殊武装の枠に加え、軽量武装を装備不可にするぶんの1枠も消費します。武装枠は${limits.total}枠までです。`
+      : "武装は4枠までです。";
+    addWarning(warnings, "weapon-total", "武装枠超過", detail);
+  }
+  if (lightLike > limits.light) addWarning(warnings, "weapon-light", "軽量武装枠超過", `軽量武装扱いは${limits.light}枠までです。近接武装も軽量武装として数えます。`);
+  if (heavyLike > limits.heavy) addWarning(warnings, "weapon-heavy", "重量武装枠超過", `重量武装扱いは${limits.heavy}枠までです。背部特殊武装も重量武装として数えます。`);
+  if (categoryCounts.melee > limits.melee) addWarning(warnings, "weapon-melee", "近接武装枠超過", "近接武装は1つまでです。");
+  if (categoryCounts.special > limits.special) addWarning(warnings, "weapon-special", "背部特殊武装枠超過", "背部特殊武装は1つまでです。");
+  if (!hasUnknownWeight && remainingLoad < 0) addWarning(warnings, "overload", "積載超過", `武装重量${totalWeight}に対し、積載上限は${stats.load}です。`);
+  if (hasUnknownWeight) addWarning(warnings, "unknown-weight", "武装重量が不足", "カスタム武装の重量が未入力のため、積載を確定できません。");
+
+  const special = equippedWeapons.find((item) => item.id === "weapon-barrier");
+  if (special && categoryCounts.heavy > 0) addWarning(warnings, "barrier-heavy", "位相偏向器と重量武装", "位相偏向器は重量武装を装備不可としています。保存はできます。 ");
+  if (special && equippedWeapons.some((item) => item.attribute === "ビーム")) addWarning(warnings, "barrier-beam", "位相偏向器とビーム武装", "位相偏向器の使用中はビーム属性武装を使用不可です。戦術上の注意として確認してください。 ");
+  if (equippedWeapons.some((item) => item.id === "weapon-scope") && !equippedWeapons.some((item) => ["キャノン", "スナイパーライフル"].includes(item.type))) addWarning(warnings, "scope-requirement", "高精度狙撃スコープの対象不足", "同時使用対象のキャノンまたはスナイパーライフルがありません。 ");
+  if (equippedWeapons.some((item) => item.id === "weapon-ammo-box")) addWarning(warnings, "ammo-box-choice", "増設弾薬箱の装備不可枠", "軽量または重量武装を1つ装備不可にする選択が必要です。現時点では自動判定していません。 ");
+  if (equippedWeapons.some((item) => item.flags?.includes("uncertain-attribute"))) addWarning(warnings, "seisou-attribute", "星霜:ツインブレードの属性未記載", "ルールデータに属性が明記されていないため、属性依存の補正を適用していません。 ");
+  for (const item of equippedWeapons.filter((item) => item.isCustom)) {
+    for (const key of ["price", "weight", "output"]) {
+      if (item[key] === null) addWarning(warnings, `custom-weapon-${item.name}-${key}`, "カスタム武装の数値が不足", `「${item.name}」の${key === "price" ? "価格" : key === "weight" ? "重量" : "消費出力"}が未入力です。`);
+    }
+  }
+
+  const purchases = [...Object.values(resolvedParts), ...equippedWeapons, ...resolvedConsumables.filter(Boolean)];
+  const unknownPrice = purchases.some((item) => item && item.price === null);
+  const totalCost = purchases.reduce((sum, item) => sum + (item?.price ?? 0), 0);
+  const remainingCredits = STARTING_CREDITS - totalCost;
+  if (unknownPrice) addWarning(warnings, "unknown-price", "価格が不足", "カスタム入力の価格が未入力です。残金は確定できません。");
+  if (!unknownPrice && remainingCredits < 0) addWarning(warnings, "funds", "残金不足", `合計${totalCost}Cで、初期資金${STARTING_CREDITS}Cを超えています。`);
+
+  const availableTechniqueIds = new Set([...(mainClass?.techniques ?? []), ...(subClass?.techniques ?? [])].map((item) => item.id));
+  const passive = findTechnique(state.techniques.passive);
+  const active = state.techniques.active.map(findTechnique).filter(Boolean);
+  if (mainClass || subClass) {
+    if (!passive) addWarning(warnings, "missing-passive", "パッシブ技巧が未選択", "クラス技巧からパッシブを1つ選択します。 ");
+    if (active.length < 2) addWarning(warnings, "missing-active", "アクティブ技巧が不足", "クラス技巧からアクティブを2つ選択します。 ");
+  }
+  for (const item of [passive, ...active].filter(Boolean)) {
+    if (!availableTechniqueIds.has(item.id)) addWarning(warnings, `invalid-technique-${item.id}`, "クラス技巧の候補外", `「${item.name}」は現在のメイン/サブクラスの候補にありません。`);
+    if (item.options?.length && !state.techniques.choices[item.id]) addWarning(warnings, `missing-technique-choice-${item.id}`, "技巧の効果選択が未入力", `「${item.name}」の効果を選択してください。`);
+  }
+
+  const selectedClassTechniques = [passive, ...active].filter(Boolean);
+  return {
+    origin, mainClass, subClass, parts: resolvedParts, weapons: weaponsWithBonuses, consumables: resolvedConsumables,
+    stats, statAdjustments, breakdown, outputRecovery, categoryCounts, limits, totalWeight, remainingLoad,
+    totalCost, remainingCredits, warnings, notices, selectedClassTechniques, selectedTechniqueIds: selectedTechniqueIds(state), formatSigned,
+  };
+}
+
+const itemName = (item) => item ? `『${item.name}』` : "未選択";
+const formatCost = (item) => item?.price === null ? "未設定" : `${item?.price ?? 0}C`;
+const modifierText = (item) => {
+  if (!item) return "";
+  const labels = { ap: "AP", action: "行動値", hit: "命中", evade: "回避", output: "出力", load: "積載", armor: "装甲" };
+  return Object.entries(item.modifiers ?? {}).filter(([, value]) => value).map(([key, value]) => `${labels[key]}${formatSigned(value)}`).join(" / ") || "修正なし";
+};
+
+function buildSheetText(state, result = calculate(state)) {
+  const lines = [];
+  lines.push("A･S･Oキャラシテンプレート");
+  lines.push(`【 パイロット名: ${state.meta.pilotName || "未入力"} 】`);
+  lines.push(`【 機体名: ${state.meta.machineName || "未入力"} 】`);
+  lines.push(`【 出自: ${result.origin.name} 】`);
+  lines.push(`【 クラス: メイン(${result.mainClass?.name || "未選択"}) / サブ(${result.subClass?.name || "未選択"}) 】`);
+  lines.push("");
+  lines.push("■ A･Kステータス");
+  for (const [key, label] of [["ap", "AP"], ["action", "行動値"], ["hit", "命中"], ["evade", "回避"], ["output", "出力"]]) {
+    lines.push(`・${label}: [ ${BASE_STATS[key]} ] + [ ${formatSigned(result.statAdjustments[key])} ] = 【 ${result.stats[key]} 】`);
+  }
+  lines.push(`・出力回復: 毎ターン ${result.outputRecovery}`);
+  lines.push(`・装甲（軽減）: 【 ${result.stats.armor} 】`);
+  lines.push("");
+  lines.push("■ アセンブル（構成パーツ）");
+  for (const slot of PART_SLOTS) {
+    const item = result.parts[slot];
+    lines.push(`・${SLOT_LABELS[slot]}: ${itemName(item)} [企業名: ${item?.company || "-"}]`);
+    lines.push(`  修正: ${modifierText(item)} / 価格: ${formatCost(item)}`);
+    if (item?.type) lines.push(`  タイプ: ${item.type}`);
+    if (item?.traits) lines.push(`  特性: ${item.traits}`);
+  }
+  lines.push("");
+  lines.push(`■ 武装（積載合計: ${result.totalWeight} / 積載上限: ${result.stats.load} / 残積載: ${result.remainingLoad} ）`);
+  result.weapons.forEach((item, index) => {
+    if (!item) { lines.push(`${index + 1}. [ 未選択 ]`); return; }
+    const power = item.damageBonus ? `${item.power} + ${item.damageBonus}` : item.power;
+    lines.push(`${index + 1}. [ ${CATEGORY_LABELS[item.category]} / ${item.type} ]『${item.name}』 射程:${item.range} 属性:${item.attribute}`);
+    lines.push(`   威力:${power} / 消費:${item.output ?? "未設定"} / 重量:${item.weight ?? "未設定"} / 価格:${formatCost(item)}`);
+    if (item.traits) lines.push(`   特性:${item.traits}`);
+  });
+  lines.push("");
+  lines.push("■ 所持【技巧】");
+  for (const item of result.origin.techniques) lines.push(`・【技巧・${item.strength}】『${item.name}』 ${item.description}`);
+  for (const item of result.selectedClassTechniques) {
+    const choice = item.options?.find((option) => option.id === state.techniques.choices[item.id]);
+    lines.push(`・【技巧・${item.strength}】『${item.name}』 タイミング:${item.timing}`);
+    lines.push(`  ${item.description}${choice ? ` 選択:${choice.label}` : ""}`);
+  }
+  lines.push("");
+  lines.push("■ 消耗品・所持金");
+  lines.push(`・所持アイテム: ${result.consumables.filter(Boolean).map((item) => item.name).join(" / ") || "なし"}`);
+  lines.push(`・残金: 【 ${result.remainingCredits}C 】（購入合計 ${result.totalCost}C）`);
+  if (result.warnings.length) {
+    lines.push("");
+    lines.push("■ 確認事項");
+    for (const warning of result.warnings) lines.push(`・${warning.title}: ${warning.detail}`);
+  }
+  if (state.meta.memo.trim()) { lines.push(""); lines.push("■ メモ"); lines.push(state.meta.memo.trim()); }
+  return lines.join("\n");
+}
+
+function exportFilename(state, now = new Date()) {
+  const rawName = state.meta.pilotName.trim() || state.meta.machineName.trim() || "無名パイロット";
+  const safeName = rawName.replace(/[\\/:*?"<>|]/g, "_").slice(0, 80);
+  const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  return `${safeName}_${date}.json`;
+}
+
+function searchText(entry) {
+  return Object.values(entry).filter((value) => typeof value === "string").join(" ").toLocaleLowerCase("ja");
+}
+
+return { createDefaultState, hydrateState, resolvePart, resolveWeapon, resolveConsumable, calculate, buildSheetText, exportFilename, searchText };
+})();
+
+const cocofoliaModule = (() => {
+
+function valueText(value) {
+  return String(value ?? "");
+}
+
+function weaponPowerText(item) {
+  if (item.power === null || item.power === undefined || item.power === "") return "未設定";
+  return item.damageBonus ? String(item.power) + " + " + item.damageBonus : valueText(item.power);
+}
+
+function weaponCommands(result) {
+  const lines = [];
+  result.weapons.filter(Boolean).forEach((item) => {
+    const name = "〈" + item.name + "〉";
+    const hit = "2d6+{命中}+{命中修正}";
+    lines.push("### ■" + name);
+    lines.push(hit + " 命中判定／" + name + " 1回目");
+    lines.push(hit + "-2 命中判定／" + name + " 2回目");
+    lines.push(hit + "-2 命中判定／" + name + " 3回目");
+    lines.push("威力: " + weaponPowerText(item) + " / 出力-" + (item.output ?? "未設定") + " / 射程: " + (item.range || "未設定") + " / 属性: " + (item.attribute || "未記載"));
+    lines.push("3回目の使用後: 次ターン終了までこの武装は使用不可");
+    if (item.traits) lines.push("特性: " + item.traits);
+    lines.push("");
+  });
+  return lines;
+}
+
+function techniqueCommands(state, result) {
+  const techniques = [...result.origin.techniques, ...result.selectedClassTechniques];
+  if (!techniques.length) return [];
+  const lines = ["### ■技巧"];
+  for (const item of techniques) {
+    const choice = item.options?.find((option) => option.id === state.techniques.choices[item.id]);
+    lines.push("【" + item.timing + "】『" + item.name + "』");
+    lines.push(item.description + (choice ? " 選択: " + choice.label : ""));
+  }
+  return lines;
+}
+
+function buildCocofoliaCharacter({ state, result }) {
+  const pilotName = state.meta.pilotName.trim() || "未入力";
+  const machineName = state.meta.machineName.trim() || pilotName || "未命名A･K";
+  const playerName = state.meta.playerName.trim();
+  const commands = [
+    "### ■基本判定",
+    "2d6+{命中}+{命中修正} 命中判定",
+    "2d6+{回避}+{回避修正} 回避判定（出力-1）",
+    "",
+    ...weaponCommands(result),
+    ...techniqueCommands(state, result),
+    "",
+    "### ■ターン・移動",
+    "出力+{出力回復} ターン開始時の出力回復",
+    "クイックブースト: 出力-2 / 回避+1 / ターン1回",
+    "アサルトブースト: 出力-2 / 回避-2",
+    "ホバリング: 出力-1 / 回避+1",
+    "オーバーブースト: 出力-4 / 次ターンの出力回復-2 / ターン1回",
+    "ビーム軽減: 出力-2 / 最大出力の半分を軽減 / ターン1回",
+  ].join("\n").trim();
+
+  const memo = [
+    "パイロット: " + pilotName,
+    playerName ? "PL: " + playerName : "",
+    "出自: " + result.origin.name,
+    "クラス: メイン(" + (result.mainClass?.name ?? "未選択") + ") / サブ(" + (result.subClass?.name ?? "未選択") + ")",
+    "出力回復: 毎ターン " + result.outputRecovery,
+    state.meta.memo.trim(),
+  ].filter(Boolean).join("\n");
+
+  return {
+    kind: "character",
+    data: {
+      playerName,
+      externalUrl: "",
+      status: [
+        { label: "AP", value: valueText(result.stats.ap), max: valueText(result.stats.ap) },
+        { label: "出力", value: valueText(result.stats.output), max: valueText(result.stats.output) },
+        { label: "装甲", value: valueText(result.stats.armor) },
+      ],
+      initiative: result.stats.action,
+      params: [
+        { label: "行動値", value: valueText(result.stats.action) },
+        { label: "命中", value: valueText(result.stats.hit) },
+        { label: "命中修正", value: "0" },
+        { label: "回避", value: valueText(result.stats.evade) },
+        { label: "回避修正", value: "0" },
+        { label: "出力回復", value: valueText(result.outputRecovery) },
+      ],
+      faces: [],
+      x: 0,
+      y: 0,
+      z: 0,
+      angle: 0,
+      width: 4,
+      height: 4,
+      active: true,
+      secret: false,
+      invisible: false,
+      hideStatus: false,
+      color: "",
+      roomId: null,
+      commands,
+      speaking: true,
+      name: machineName,
+      memo,
+    },
+  };
+}
+
+return { buildCocofoliaCharacter };
+})();
+
+const exporterModule = (() => {
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;",
+  })[character]);
+}
+
+function sharedImageMarkup(images) {
+  const machineImage = images.machine || "";
+  const pilotImage = images.pilot || "";
+  const frontImage = machineImage || pilotImage;
+  if (!frontImage) return "";
+  const hasPair = Boolean(machineImage && pilotImage);
+  const frontLabel = machineImage ? "機体" : "パイロット";
+  const frontFace = '<div class="image-face image-front"><img src="' + escapeHtml(frontImage) + '" alt="' + frontLabel + '画像"><span>' + frontLabel + '</span></div>';
+  const backFace = hasPair ? '<div class="image-face image-back"><img src="' + escapeHtml(pilotImage) + '" alt="パイロット画像"><span>パイロット</span></div>' : "";
+  const toggle = hasPair ? '<button type="button" class="image-toggle" id="image-toggle" aria-pressed="false">切り替え</button>' : "";
+  return '<section class="image-section"><div class="image-card" id="image-card"><div class="image-inner">' + frontFace + backFace + '</div></div>' + toggle + '</section>';
+}
+
+function buildStandaloneHtml({ title, sheetText, images = {}, generatedAt = new Date() }) {
+  const safeTitle = escapeHtml(title || "A.S.OTRPGキャラクターシート");
+  const date = escapeHtml(generatedAt.toLocaleString("ja-JP", { dateStyle: "medium", timeStyle: "short" }));
+  const imageMarkup = sharedImageMarkup(images);
+  return `<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A.S.OTRPGキャラクターシート | ${safeTitle}</title>
+  <style>
+    :root { --ink: #19212a; --muted: #5f6874; --line: #cbd3db; --accent: #0c66b4; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #edf1f4; color: var(--ink); font: 15px/1.6 system-ui, -apple-system, "Yu Gothic UI", "Meiryo", sans-serif; }
+    main { width: min(980px, calc(100% - 32px)); margin: 32px auto; background: #fff; border: 1px solid var(--line); box-shadow: 0 8px 24px rgb(25 33 42 / 10%); }
+    header { padding: 28px 32px 20px; border-bottom: 4px solid var(--accent); }
+    h1 { margin: 0; font-size: 24px; line-height: 1.3; letter-spacing: 0; }
+    p { margin: 8px 0 0; color: var(--muted); } .character { color: var(--accent); font-size: 18px; font-weight: 700; }
+    .image-section { display: flex; align-items: center; gap: 14px; padding: 24px 32px; border-bottom: 1px solid var(--line); }
+    .image-card { width: min(480px, 100%); perspective: 1200px; }
+    .image-inner { position: relative; width: 100%; aspect-ratio: 4 / 3; transform-style: preserve-3d; transition: transform 460ms ease; }
+    .image-card.is-flipped .image-inner { transform: rotateY(180deg); }
+    .image-face { position: absolute; inset: 0; display: grid; overflow: hidden; place-items: center; border: 1px solid var(--line); border-radius: 4px; background: #f5f7f8; backface-visibility: hidden; }
+    .image-face img { width: 100%; height: 100%; object-fit: contain; }
+    .image-face span { position: absolute; right: 8px; bottom: 8px; padding: 2px 6px; background: rgb(255 255 255 / 86%); font-size: 11px; }
+    .image-back { transform: rotateY(180deg); }
+    .image-toggle { min-height: 36px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 4px; background: #fff; color: var(--ink); cursor: pointer; }
+    .image-toggle:hover { border-color: var(--accent); background: #f3f8fd; }
+    section { padding: 24px 32px; } h2 { margin: 0; font-size: 17px; letter-spacing: 0; }
+    pre { margin: 14px 0 0; padding: 16px; overflow-x: auto; background: #202b35; color: #eef5f8; font: 13px/1.55 ui-monospace, "Cascadia Mono", "Meiryo", monospace; white-space: pre-wrap; }
+    footer { padding: 16px 32px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    @media (max-width: 680px) { body { background: #fff; } main { width: 100%; margin: 0; border: 0; box-shadow: none; } header, section, footer { padding-left: 16px; padding-right: 16px; } }
+    @media (max-width: 680px) { .image-section { align-items: flex-start; flex-direction: column; padding-right: 16px; padding-left: 16px; } }
+    @media (prefers-reduced-motion: reduce) { .image-inner { transition: none; } }
+    @media print { body { background: #fff; } main { width: 100%; margin: 0; border: 0; box-shadow: none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p>A.S.OTRPGキャラクターシート / 非公式 / 閲覧専用</p>
+      <h1>アサルト・スティール・オンライン</h1>
+      <p class="character">${safeTitle}</p>
+    </header>
+    ${imageMarkup}
+    <section><h2>キャラクターシート</h2><pre>${escapeHtml(sheetText)}</pre></section>
+    <footer>出力日時: ${date}<br>このHTMLは単体で閲覧できます。再編集にはJSONを使用してください。</footer>
+  </main>
+  <script>
+    const imageCard = document.querySelector("#image-card");
+    const imageToggle = document.querySelector("#image-toggle");
+    if (imageCard && imageToggle) imageToggle.addEventListener("click", () => {
+      const flipped = imageCard.classList.toggle("is-flipped");
+      imageToggle.setAttribute("aria-pressed", String(flipped));
+    });
+  <\/script>
+</body>
+</html>`;
+}
+
+return { buildStandaloneHtml };
+})();
+
+const mediaModule = (() => {
+
+const DB_NAME = "aso-character-sheet-media";
+const STORE_NAME = "images";
+const IMAGE_SLOTS = ["machine", "pilot"];
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+let databasePromise;
+
+function openDatabase() {
+  if (databasePromise) return databasePromise;
+  databasePromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(STORE_NAME)) request.result.createObjectStore(STORE_NAME, { keyPath: "slot" });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("画像保存領域を開けませんでした。"));
+  });
+  return databasePromise;
+}
+
+function runRequest(mode, callback) {
+  return openDatabase().then((database) => new Promise((resolve, reject) => {
+    const transaction = database.transaction(STORE_NAME, mode);
+    const request = callback(transaction.objectStore(STORE_NAME));
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("画像保存に失敗しました。"));
+  }));
+}
+
+function validateSlot(slot) {
+  if (!IMAGE_SLOTS.includes(slot)) throw new Error("画像の保存先が不正です。");
+}
+
+async function getStoredImage(slot) {
+  validateSlot(slot);
+  return runRequest("readonly", (store) => store.get(slot));
+}
+
+async function getStoredImages() {
+  const entries = await Promise.all(IMAGE_SLOTS.map(async (slot) => [slot, await getStoredImage(slot)]));
+  return Object.fromEntries(entries);
+}
+
+async function saveStoredImage(slot, file) {
+  validateSlot(slot);
+  if (!file?.type?.startsWith("image/")) throw new Error("画像ファイルを選択してください。");
+  if (file.size > MAX_IMAGE_BYTES) throw new Error("画像は1枚8MB以下にしてください。");
+  const record = { slot, blob: file, name: file.name, type: file.type, updatedAt: new Date().toISOString() };
+  await runRequest("readwrite", (store) => store.put(record));
+  return record;
+}
+
+async function removeStoredImage(slot) {
+  validateSlot(slot);
+  await runRequest("readwrite", (store) => store.delete(slot));
+}
+
+async function clearStoredImages() {
+  await runRequest("readwrite", (store) => store.clear());
+}
+
+function imageRecordToUrl(record) {
+  return record?.blob ? URL.createObjectURL(record.blob) : "";
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("画像を書き出せませんでした。"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function getEmbeddedImages() {
+  const images = await getStoredImages();
+  const entries = await Promise.all(IMAGE_SLOTS.map(async (slot) => [slot, images[slot]?.blob ? await blobToDataUrl(images[slot].blob) : ""]));
+  return Object.fromEntries(entries);
+}
+
+return { getStoredImage, getStoredImages, saveStoredImage, removeStoredImage, clearStoredImages, imageRecordToUrl, getEmbeddedImages };
+})();
+
+const appModule = (() => {
+const { BASE_STATS, STARTING_CREDITS, origins, classes, parts, weapons, consumables, SLOT_LABELS, CATEGORY_LABELS, findById, findPart, findWeapon, findConsumable, findClass, findOrigin, allClassTechniques } = dataModule;
+const { createDefaultState, hydrateState, resolvePart, resolveWeapon, resolveConsumable, calculate, buildSheetText, exportFilename, searchText } = logicModule;
+const { buildCocofoliaCharacter } = cocofoliaModule;
+const { buildStandaloneHtml } = exporterModule;
+const { getStoredImage, getStoredImages, saveStoredImage, removeStoredImage, clearStoredImages, imageRecordToUrl, getEmbeddedImages } = mediaModule;
+
+const app = document.querySelector("#app");
+const importInput = document.querySelector("#json-import");
+const STORAGE_KEY = "aso-character-sheet-draft-v1";
+let mode = "edit";
+let exportFormat = "json";
+let state = loadDraft();
+let isImageFlipped = false;
+const imageRecords = { machine: null, pilot: null };
+const imageUrls = { machine: "", pilot: "" };
+
+function loadDraft() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? hydrateState(JSON.parse(saved)) : createDefaultState();
+  } catch {
+    return createDefaultState();
+  }
+}
+
+function saveDraft() {
+  state.updatedAt = new Date().toISOString();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const indicator = document.querySelector("#save-indicator");
+  if (indicator) indicator.textContent = "下書き保存済み";
+}
+
+function setImageRecord(slot, record) {
+  if (imageUrls[slot]) URL.revokeObjectURL(imageUrls[slot]);
+  imageRecords[slot] = record ?? null;
+  imageUrls[slot] = imageRecordToUrl(record);
+}
+
+function resetImageState() {
+  setImageRecord("machine", null);
+  setImageRecord("pilot", null);
+  isImageFlipped = false;
+}
+
+async function loadStoredImages() {
+  try {
+    const storedImages = await getStoredImages();
+    setImageRecord("machine", storedImages.machine);
+    setImageRecord("pilot", storedImages.pilot);
+    render();
+  } catch {
+    resetImageState();
+  }
+}
+
+async function replaceImage(slot, file) {
+  const record = await saveStoredImage(slot, file);
+  setImageRecord(slot, record);
+  isImageFlipped = false;
+  render();
+}
+
+async function removeImage(slot) {
+  await removeStoredImage(slot);
+  setImageRecord(slot, null);
+  isImageFlipped = false;
+  render();
+}
+
+async function removeAllImages() {
+  await clearStoredImages();
+  resetImageState();
+}
+
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#039;", '"': "&quot;" })[character]);
+}
+
+function setPath(path, value) {
+  const keys = path.split(".");
+  let target = state;
+  keys.slice(0, -1).forEach((key) => { target = target[key]; });
+  target[keys.at(-1)] = value;
+}
+
+function getPartEntry(slot) { return state.parts[slot]; }
+function getWeaponEntry(index) { return state.weapons[index]; }
+function getConsumableEntry(index) { return state.consumables[index]; }
+function partDisplay(slot) { const entry = getPartEntry(slot); return entry.id ? findPart(entry.id)?.name ?? entry.custom.name : entry.custom.name; }
+function weaponDisplay(index) { const entry = getWeaponEntry(index); return entry.id ? findWeapon(entry.id)?.name ?? entry.custom.name : entry.custom.name; }
+function consumableDisplay(index) { const entry = getConsumableEntry(index); return entry.id ? findConsumable(entry.id)?.name ?? entry.custom.name : entry.custom.name; }
+function selectedClassTechniqueIds() { return [state.techniques.passive, ...state.techniques.active].filter(Boolean); }
+function exportFormatOption(value, label) { return `<option value="${value}" ${exportFormat === value ? "selected" : ""}>${label}</option>`; }
+
+function header(result) {
+  const pilot = state.meta.pilotName || "新規キャラクター";
+  const cocofoliaExport = exportFormat === "cocofolia";
+  return `
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">A.S.O</span>
+        <div><h1>A.S.OTRPGキャラクターシート</h1><p>${escapeHtml(pilot)}</p></div>
+      </div>
+      <div class="topbar-actions" aria-label="シート操作">
+        <span id="save-indicator" class="save-indicator">${state.updatedAt ? "下書き保存済み" : "新規下書き"}</span>
+        <button class="mode-button ${mode === "edit" ? "active" : ""}" type="button" data-action="switch-mode" data-mode="edit">編集</button>
+        <button class="mode-button ${mode === "view" ? "active" : ""}" type="button" data-action="switch-mode" data-mode="view">閲覧</button>
+        <button class="icon-button" type="button" data-action="import-json" title="JSONを読み込む" aria-label="JSONを読み込む">↥</button>
+        <label class="export-picker"><span class="sr-only">書き出し形式</span><select class="export-select" data-export-format aria-label="書き出し形式">${exportFormatOption("template", "テンプレート（.txt）")}${exportFormatOption("html", "共有用HTML（.html）")}${exportFormatOption("json", "JSON（再編集用）")}${exportFormatOption("cocofolia", "ココフォリア用JSON（コピー）")}</select></label>
+        <button class="icon-button" type="button" data-action="export-selected" title="${cocofoliaExport ? "ココフォリア用JSONをコピー" : "選択した形式で書き出す"}" aria-label="${cocofoliaExport ? "ココフォリア用JSONをコピー" : "選択した形式で書き出す"}">${cocofoliaExport ? "⧉" : "↓"}</button>
+        <button class="icon-button danger" type="button" data-action="new-sheet" title="新しいシートを作る" aria-label="新しいシートを作る">＋</button>
+      </div>
+    </header>`;
+}
+
+function section(title, body, options = {}) {
+  return `<section class="editor-section ${options.className ?? ""}"><div class="section-heading"><h2>${title}</h2>${options.meta ? `<span>${options.meta}</span>` : ""}</div>${body}</section>`;
+}
+
+function field(label, path, value, options = {}) {
+  const type = options.type ?? "text";
+  const extra = options.extra ?? "";
+  if (type === "textarea") return `<label class="field field-wide"><span>${label}</span><textarea data-path="${path}" rows="${options.rows ?? 3}" placeholder="${options.placeholder ?? ""}">${escapeHtml(value)}</textarea></label>`;
+  return `<label class="field ${options.wide ? "field-wide" : ""}"><span>${label}</span><input type="${type}" data-path="${path}" value="${escapeHtml(value)}" placeholder="${options.placeholder ?? ""}" ${extra} /></label>`;
+}
+
+function selectField(label, path, value, choices, options = {}) {
+  return `<label class="field ${options.wide ? "field-wide" : ""}"><span>${label}</span><select data-path="${path}">${choices.map((choice) => `<option value="${escapeHtml(choice.value)}" ${choice.value === value ? "selected" : ""}>${escapeHtml(choice.label)}</option>`).join("")}</select></label>`;
+}
+
+function combo({ kind, key, value, placeholder, entries, label }) {
+  const keyData = escapeHtml(key);
+  const list = entries.map((entry) => {
+    const labelText = kind === "part" ? `${entry.company} / ${SLOT_LABELS[entry.slot]} / 『${entry.name}』` : kind === "weapon" ? `${entry.company} / ${CATEGORY_LABELS[entry.category]} / 【${entry.type}】『${entry.name}』` : `${entry.name} / ${entry.price}C`;
+    return `<button type="button" class="suggestion" data-action="choose-${kind}" data-key="${keyData}" data-id="${entry.id}" data-search="${escapeHtml(searchText(entry))}">${escapeHtml(labelText)}</button>`;
+  }).join("");
+  return `<div class="combo-wrap"><label class="field field-wide"><span>${label}</span><input class="combo-input" autocomplete="off" data-combo-kind="${kind}" data-key="${keyData}" value="${escapeHtml(value ?? "")}" placeholder="${escapeHtml(placeholder)}" /></label><div class="suggestions" role="listbox">${list}<p class="no-suggestion" hidden>一致するデータはありません。入力内容はカスタム扱いで保存できます。</p></div></div>`;
+}
+
+function selectedPartInfo(slot) {
+  const entry = getPartEntry(slot);
+  const item = entry.id ? findPart(entry.id) : null;
+  if (item) return `<div class="selected-info"><b>${escapeHtml(item.company)} 『${escapeHtml(item.name)}』</b><span>${escapeHtml(formatPartInfo(item))}</span>${item.traits ? `<small>${escapeHtml(item.traits)}</small>` : ""}</div>`;
+  if (!entry.custom.name) return "";
+  return `<details class="custom-details" open><summary>カスタム値を入力</summary><div class="custom-grid">${field("企業", `parts.${slot}.custom.company`, entry.custom.company)}${field("価格 (C)", `parts.${slot}.custom.price`, entry.custom.price, { type: "number" })}${field("AP", `parts.${slot}.custom.ap`, entry.custom.ap, { type: "number" })}${field("行動値", `parts.${slot}.custom.action`, entry.custom.action, { type: "number" })}${field("命中", `parts.${slot}.custom.hit`, entry.custom.hit, { type: "number" })}${field("回避", `parts.${slot}.custom.evade`, entry.custom.evade, { type: "number" })}${field("出力", `parts.${slot}.custom.output`, entry.custom.output, { type: "number" })}${field("積載", `parts.${slot}.custom.load`, entry.custom.load, { type: "number" })}${field("装甲", `parts.${slot}.custom.armor`, entry.custom.armor, { type: "number" })}${field("脚部タイプ", `parts.${slot}.custom.type`, entry.custom.type)}${field("特性", `parts.${slot}.custom.traits`, entry.custom.traits, { wide: true })}</div></details>`;
+}
+
+function formatPartInfo(item) {
+  const labels = { ap: "AP", action: "行動", hit: "命中", evade: "回避", output: "出力", load: "積載", armor: "装甲" };
+  const modifier = Object.entries(item.modifiers).filter(([, value]) => value).map(([key, value]) => `${labels[key]}${value > 0 ? "+" : ""}${value}`).join(" / ") || "修正なし";
+  return `${modifier} / ${item.price}C${item.type ? ` / ${item.type}` : ""}`;
+}
+
+function partsEditor() {
+  const body = ["head", "torso", "legs", "generator"].map((slot) => {
+    const candidates = parts.filter((item) => item.slot === slot);
+    return `<div class="assemble-row">${combo({ kind: "part", key: slot, value: partDisplay(slot), label: SLOT_LABELS[slot], placeholder: `${SLOT_LABELS[slot]}を検索`, entries: candidates })}${selectedPartInfo(slot)}</div>`;
+  }).join("");
+  return section("アセンブル", body, { meta: "4部位" });
+}
+
+function selectedWeaponInfo(index) {
+  const entry = getWeaponEntry(index);
+  const item = entry.id ? findWeapon(entry.id) : null;
+  if (item) return `<div class="selected-info compact"><b>${escapeHtml(CATEGORY_LABELS[item.category])} / 【${escapeHtml(item.type)}】</b><span>威力 ${escapeHtml(item.power)} / 射程 ${escapeHtml(item.range)} / ${escapeHtml(item.attribute)} / 重量 ${item.weight} / 出力 ${item.output} / ${item.price}C</span>${item.traits ? `<small>${escapeHtml(item.traits)}</small>` : ""}</div>`;
+  if (!entry.custom.name) return "";
+  return `<details class="custom-details" open><summary>カスタム値を入力</summary><div class="custom-grid">${field("企業", `weapons.${index}.custom.company`, entry.custom.company)}${selectField("分類", `weapons.${index}.custom.category`, entry.custom.category, Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label })))}${field("種別", `weapons.${index}.custom.type`, entry.custom.type)}${field("価格 (C)", `weapons.${index}.custom.price`, entry.custom.price, { type: "number" })}${field("威力", `weapons.${index}.custom.power`, entry.custom.power)}${field("重量", `weapons.${index}.custom.weight`, entry.custom.weight, { type: "number" })}${field("消費出力", `weapons.${index}.custom.output`, entry.custom.output, { type: "number" })}${field("射程", `weapons.${index}.custom.range`, entry.custom.range)}${field("属性", `weapons.${index}.custom.attribute`, entry.custom.attribute)}${field("特性", `weapons.${index}.custom.traits`, entry.custom.traits, { wide: true })}</div></details>`;
+}
+
+function weaponEditor() {
+  const body = state.weapons.map((_, index) => `<div class="weapon-row"><span class="row-index">${index + 1}</span><div>${combo({ kind: "weapon", key: String(index), value: weaponDisplay(index), label: "武装", placeholder: "武装名・企業・分類で検索", entries: weapons })}${selectedWeaponInfo(index)}</div><button type="button" class="remove-row" data-action="clear-weapon" data-index="${index}" title="この武装枠を空にする" aria-label="この武装枠を空にする">×</button></div>`).join("");
+  return section("武装", body, { meta: "4枠 / 入力で候補を絞り込み" });
+}
+
+function techniqueOptions(kind) {
+  const main = findClass(state.classes.main)?.techniques ?? [];
+  const sub = findClass(state.classes.sub)?.techniques ?? [];
+  const ids = new Set();
+  return [...main, ...sub].filter((item) => item.timing === kind || (kind === "アクティブ" && item.timing !== "パッシブ")).filter((item) => !ids.has(item.id) && ids.add(item.id));
+}
+
+function techniqueSelect(label, path, value, candidates, options = {}) {
+  const choices = [{ value: "", label: "選択してください" }, ...candidates.map((item) => ({ value: item.id, label: `【${item.timing}】${item.name}` }))];
+  return selectField(label, path, value, choices, { wide: options.wide ?? true });
+}
+
+function techniqueChoiceInputs() {
+  const selected = selectedClassTechniqueIds().map((id) => allClassTechniques().find((item) => item.id === id)).filter(Boolean);
+  return selected.filter((item) => item.options?.length).map((item) => selectField(`${item.name} の選択`, `techniques.choices.${item.id}`, state.techniques.choices[item.id] ?? "", [{ value: "", label: "効果を選択" }, ...item.options.map((option) => ({ value: option.id, label: option.label }))], { wide: true })).join("");
+}
+
+function classEditor() {
+  const classChoices = [{ value: "", label: "選択してください" }, ...classes.map((item) => ({ value: item.id, label: item.name }))];
+  const passive = techniqueOptions("パッシブ");
+  const active = techniqueOptions("アクティブ");
+  const body = `<div class="form-grid">
+    ${selectField("出自", "origin", state.origin, origins.map((item) => ({ value: item.id, label: item.name })))}
+    ${state.origin === "human" ? selectField("人間の補正", "humanBonus", state.humanBonus, [{ value: "hit", label: "命中+1" }, { value: "evade", label: "回避+1" }]) : `<div class="field muted-field"><span>出自補正</span><b>行動値+1 / 出力+2</b></div>`}
+    ${selectField("メインクラス", "classes.main", state.classes.main, classChoices)}
+    ${selectField("サブクラス", "classes.sub", state.classes.sub, classChoices)}
+    ${state.classes.main === "vanguard" ? selectField("ヴァンガード補正", "classes.vanguardBonus", state.classes.vanguardBonus, [{ value: "evade", label: "回避+1" }, { value: "armor", label: "装甲+1" }]) : ""}
+  </div>
+  <div class="technique-grid">
+    ${techniqueSelect("パッシブ技巧", "techniques.passive", state.techniques.passive, passive)}
+    ${techniqueSelect("アクティブ技巧 1", "techniques.active.0", state.techniques.active[0], active)}
+    ${techniqueSelect("アクティブ技巧 2", "techniques.active.1", state.techniques.active[1], active)}
+    ${techniqueChoiceInputs()}
+  </div>`;
+  return section("出自・クラス・技巧", body, { meta: "クラス技巧: パッシブ1 / アクティブ2" });
+}
+
+function consumableInfo(index) {
+  const entry = getConsumableEntry(index);
+  const item = entry.id ? findConsumable(entry.id) : null;
+  if (item) return `<div class="selected-info compact"><b>${item.price}C / ${escapeHtml(item.timing)}</b><small>${escapeHtml(item.effect)}</small></div>`;
+  if (!entry.custom.name) return "";
+  return `<details class="custom-details" open><summary>カスタム値を入力</summary><div class="custom-grid">${field("価格 (C)", `consumables.${index}.custom.price`, entry.custom.price, { type: "number" })}${field("タイミング", `consumables.${index}.custom.timing`, entry.custom.timing)}${field("効果", `consumables.${index}.custom.effect`, entry.custom.effect, { wide: true })}</div></details>`;
+}
+
+function consumableEditor() {
+  const rows = state.consumables.map((_, index) => `<div class="consumable-row">${combo({ kind: "consumable", key: String(index), value: consumableDisplay(index), label: `所持アイテム ${index + 1}`, placeholder: "アイテム名で検索", entries: consumables })}${consumableInfo(index)}<button type="button" class="remove-row" data-action="remove-consumable" data-index="${index}" title="このアイテムを外す" aria-label="所持アイテム ${index + 1} を外す">×</button></div>`).join("");
+  const body = `<div class="consumable-grid">${rows}</div><div class="consumable-actions"><button type="button" class="secondary-button consumable-add-button" data-action="add-consumable">＋ アイテムを追加</button></div>`;
+  return section("消耗品", body, { meta: "所持枠なし / 残金内で購入" });
+}
+
+function statCard(label, base, modifier, total, note = "") {
+  return `<div class="stat-card"><span>${label}</span><strong>${total}</strong><small>${base} ${modifier >= 0 ? "+" : ""}${modifier}${note ? ` / ${note}` : ""}</small></div>`;
+}
+
+function summaryPanel(result) {
+  const warningList = result.warnings.length ? result.warnings.map((warning) => `<li><b>${escapeHtml(warning.title)}</b><span>${escapeHtml(warning.detail)}</span></li>`).join("") : `<li class="good"><b>判定上の警告はありません</b><span>未確定ルールは閲覧時にも確認できます。</span></li>`;
+  const body = `<div class="status-grid">
+      ${statCard("AP", 30, result.statAdjustments.ap, result.stats.ap)}
+      ${statCard("行動値", 5, result.statAdjustments.action, result.stats.action)}
+      ${statCard("命中", 6, result.statAdjustments.hit, result.stats.hit)}
+      ${statCard("回避", 7, result.statAdjustments.evade, result.stats.evade)}
+      ${statCard("出力", 4, result.statAdjustments.output, result.stats.output, `回復 ${result.outputRecovery}`)}
+      ${statCard("装甲", 0, result.stats.armor, result.stats.armor)}
+    </div>
+    <div class="summary-numbers"><div><span>残積載</span><strong class="${result.remainingLoad < 0 ? "negative" : ""}">${result.remainingLoad}</strong><small>${result.totalWeight} / ${result.stats.load}</small></div><div><span>残金</span><strong class="${result.remainingCredits < 0 ? "negative" : ""}">${result.remainingCredits}C</strong><small>購入 ${result.totalCost}C</small></div></div>
+    <div class="warning-panel"><h3>確認事項</h3><ul>${warningList}</ul></div>`;
+  return `<aside class="summary-panel">${body}</aside>`;
+}
+
+function textOutput(result) {
+  return section("テキスト出力", `<textarea id="sheet-text" class="sheet-text" readonly rows="18">${escapeHtml(buildSheetText(state, result))}</textarea><div class="output-actions"><button type="button" class="secondary-button" data-action="copy-text">テキストをコピー</button></div>`);
+}
+
+function renderEdit(result) {
+  const personal = section("パーソナルデータ", `<div class="form-grid">${field("パイロット名", "meta.pilotName", state.meta.pilotName, { placeholder: "例: ジョン・ドゥ" })}${field("機体名", "meta.machineName", state.meta.machineName, { placeholder: "例: UNKNOWN:LUCK" })}${field("プレイヤー名", "meta.playerName", state.meta.playerName)}${field("メモ", "meta.memo", state.meta.memo, { type: "textarea", rows: 3, wide: true })}</div>`);
+  return `<main class="app-layout edit-layout"><div class="editor-column">${personal}${classEditor()}${partsEditor()}${weaponEditor()}${consumableEditor()}${textOutput(result)}</div>${summaryPanel(result)}</main>`;
+}
+
+function viewHeader(title, detail = "") { return `<div class="view-section-heading"><h2>${title}</h2>${detail ? `<span>${detail}</span>` : ""}</div>`; }
+function viewPartRows(result) { return Object.entries(result.parts).map(([slot, item]) => `<tr><th>${SLOT_LABELS[slot]}</th><td>${item ? `『${escapeHtml(item.name)}』` : "未選択"}</td><td>${escapeHtml(item?.company ?? "-")}</td><td>${item ? escapeHtml(formatPartInfo(item)) : "-"}</td></tr>`).join(""); }
+function viewWeaponRows(result) { return result.weapons.map((item, index) => `<tr><th>${index + 1}</th><td>${item ? `${escapeHtml(CATEGORY_LABELS[item.category])} / 【${escapeHtml(item.type)}】『${escapeHtml(item.name)}』` : "未選択"}</td><td>${item ? `${escapeHtml(item.attribute)} / ${escapeHtml(item.range)}` : "-"}</td><td>${item ? `${escapeHtml(item.power)}${item.damageBonus ? ` + ${item.damageBonus}` : ""} / 出力${item.output ?? "-"} / 重量${item.weight ?? "-"}` : "-"}</td></tr>`).join(""); }
+
+function imageFlipViewer() {
+  const machineImage = imageUrls.machine;
+  const pilotImage = imageUrls.pilot;
+  const frontImage = machineImage || pilotImage;
+  if (!frontImage) return "";
+  const hasPair = Boolean(machineImage && pilotImage);
+  const frontLabel = machineImage ? "機体" : "パイロット";
+  const frontFace = '<div class="image-flip-face image-flip-front"><img src="' + escapeHtml(frontImage) + '" alt="' + frontLabel + '画像"><span>' + frontLabel + '</span></div>';
+  const backFace = hasPair ? '<div class="image-flip-face image-flip-back"><img src="' + escapeHtml(pilotImage) + '" alt="パイロット画像"><span>パイロット</span></div>' : "";
+  const toggle = hasPair ? '<button type="button" class="image-flip-toggle" data-action="flip-images" aria-pressed="' + String(isImageFlipped) + '">切り替え</button>' : "";
+  return '<section class="view-image-stage"><div class="image-flip-card' + (isImageFlipped ? " is-flipped" : "") + '"><div class="image-flip-inner">' + frontFace + backFace + '</div></div>' + toggle + '</section>';
+}
+
+function renderView(result) {
+  const techniqueCards = [...result.origin.techniques, ...result.selectedClassTechniques].map((item) => {
+    const choice = item.options?.find((option) => option.id === state.techniques.choices[item.id]);
+    return `<article class="technique-card ${item.strength === "W" ? "weakness" : ""}"><span>技巧・${item.strength} / ${escapeHtml(item.timing)}</span><h3>『${escapeHtml(item.name)}』</h3><p>${escapeHtml(item.description)}</p>${choice ? `<b>選択: ${escapeHtml(choice.label)}</b>` : ""}</article>`;
+  }).join("");
+  const itemRows = result.consumables.filter(Boolean).map((item) => `<li><b>${escapeHtml(item.name)}</b><span>${item.price ?? "未設定"}C / ${escapeHtml(item.effect)}</span></li>`).join("") || "<li><span>なし</span></li>";
+  const warnings = result.warnings.length ? result.warnings.map((warning) => `<li><b>${escapeHtml(warning.title)}</b><span>${escapeHtml(warning.detail)}</span></li>`).join("") : "<li class=\"good\"><b>判定上の警告はありません</b></li>";
+  return `<main class="view-shell"><section class="sheet-identity"><div><span>パイロット</span><h2>${escapeHtml(state.meta.pilotName || "未入力")}</h2></div><div><span>A･K</span><h2>${escapeHtml(state.meta.machineName || "未入力")}</h2></div><dl><div><dt>出自</dt><dd>${escapeHtml(result.origin.name)}</dd></div><div><dt>メイン</dt><dd>${escapeHtml(result.mainClass?.name ?? "未選択")}</dd></div><div><dt>サブ</dt><dd>${escapeHtml(result.subClass?.name ?? "未選択")}</dd></div></dl></section>
+    <section class="view-section">${viewHeader("A･Kステータス", `出力回復: 毎ターン ${result.outputRecovery}`)}<div class="view-stats">${statCard("AP", 30, result.statAdjustments.ap, result.stats.ap)}${statCard("行動値", 5, result.statAdjustments.action, result.stats.action)}${statCard("命中", 6, result.statAdjustments.hit, result.stats.hit)}${statCard("回避", 7, result.statAdjustments.evade, result.stats.evade)}${statCard("出力", 4, result.statAdjustments.output, result.stats.output)}${statCard("装甲", 0, result.stats.armor, result.stats.armor)}</div></section>
+    <section class="view-section">${viewHeader("アセンブル")}<div class="table-scroll"><table><tbody>${viewPartRows(result)}</tbody></table></div></section>
+    <section class="view-section">${viewHeader("武装", `積載 ${result.totalWeight} / ${result.stats.load}（残 ${result.remainingLoad}）`)}<div class="table-scroll"><table><thead><tr><th>枠</th><th>武装</th><th>属性 / 射程</th><th>性能</th></tr></thead><tbody>${viewWeaponRows(result)}</tbody></table></div></section>
+    <section class="view-section">${viewHeader("所持技巧")}<div class="technique-cards">${techniqueCards || "<p>未選択</p>"}</div></section>
+    <section class="view-section view-bottom"><div><div class="view-section-heading"><h2>消耗品・所持金</h2><span>購入 ${result.totalCost}C / 残金 ${result.remainingCredits}C</span></div><ul class="item-list">${itemRows}</ul></div><div class="warning-panel view-warnings"><h3>確認事項</h3><ul>${warnings}</ul></div></section>
+    ${state.meta.memo.trim() ? `<section class="view-section"><div class="view-section-heading"><h2>メモ</h2></div><p class="memo-view">${escapeHtml(state.meta.memo)}</p></section>` : ""}
+  </main>`;
+}
+
+function render() {
+  const result = calculate(state);
+  app.innerHTML = `${header(result)}${mode === "edit" ? renderEdit(result) : renderView(result)}<footer class="page-footer">非公式MVP / ルール解釈・公開範囲は製作者確認前です</footer>`;
+  bindEvents();
+}
+
+function updateComboSuggestions(input) {
+  const query = input.value.trim().toLocaleLowerCase("ja");
+  const root = input.closest(".combo-wrap");
+  const choices = [...root.querySelectorAll(".suggestion")];
+  let shown = 0;
+  for (const choice of choices) {
+    const matches = !query || choice.dataset.search.includes(query);
+    const visible = matches && shown < 8;
+    choice.hidden = !visible;
+    if (visible) shown += 1;
+  }
+  root.classList.add("is-open");
+  root.querySelector(".no-suggestion").hidden = shown !== 0;
+}
+
+function updateComboCustom(kind, key, value) {
+  if (kind === "part") { state.parts[key].id = ""; state.parts[key].custom.name = value; }
+  if (kind === "weapon") { state.weapons[Number(key)].id = ""; state.weapons[Number(key)].custom.name = value; }
+  if (kind === "consumable") { state.consumables[Number(key)].id = ""; state.consumables[Number(key)].custom.name = value; }
+  saveDraft();
+}
+
+function selectCombo(kind, key, id) {
+  if (kind === "part") { state.parts[key].id = id; state.parts[key].custom.name = ""; }
+  if (kind === "weapon") { state.weapons[Number(key)].id = id; state.weapons[Number(key)].custom.name = ""; }
+  if (kind === "consumable") { state.consumables[Number(key)].id = id; state.consumables[Number(key)].custom.name = ""; }
+  saveDraft();
+  render();
+}
+
+function bindEvents() {
+  document.querySelectorAll("[data-path]").forEach((element) => {
+    const apply = () => {
+      setPath(element.dataset.path, element.value);
+      saveDraft();
+    };
+    element.addEventListener("input", apply);
+    element.addEventListener("change", () => { apply(); render(); });
+    element.addEventListener("blur", () => { apply(); render(); });
+  });
+  document.querySelectorAll("[data-combo-kind]").forEach((input) => {
+    input.addEventListener("input", () => { updateComboCustom(input.dataset.comboKind, input.dataset.key, input.value); updateComboSuggestions(input); });
+    input.addEventListener("focus", () => updateComboSuggestions(input));
+    input.addEventListener("blur", () => window.setTimeout(() => input.closest(".combo-wrap")?.classList.remove("is-open"), 120));
+  });
+  document.querySelectorAll("[data-export-format]").forEach((select) => select.addEventListener("change", () => { exportFormat = select.value; render(); }));
+  document.querySelectorAll("[data-image-upload]").forEach((input) => input.addEventListener("change", async () => {
+    const [file] = input.files ?? [];
+    if (!file) return;
+    try {
+      await replaceImage(input.dataset.imageUpload, file);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "画像を保存できませんでした。");
+    }
+  }));
+  document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", handleAction));
+}
+
+async function copyText() {
+  const text = buildSheetText(state);
+  try {
+    await navigator.clipboard.writeText(text);
+    const button = document.querySelector('[data-action="copy-text"]');
+    if (button) { button.textContent = "コピーしました"; window.setTimeout(() => { button.textContent = "テキストをコピー"; }, 1600); }
+  } catch {
+    const area = document.querySelector("#sheet-text");
+    area?.select();
+    document.execCommand("copy");
+  }
+}
+
+async function copyCocofoliaJson() {
+  const content = JSON.stringify(buildCocofoliaCharacter({ state, result: calculate(state) }), null, 2);
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(content);
+    copied = true;
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = content;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.append(area);
+    area.select();
+    copied = document.execCommand("copy");
+    area.remove();
+  }
+  if (!copied) {
+    window.alert("ココフォリア用JSONをコピーできませんでした。ブラウザのクリップボード許可を確認してください。");
+    return;
+  }
+  const button = document.querySelector('[data-action="export-selected"]');
+  if (button) {
+    button.textContent = "✓";
+    window.setTimeout(() => { button.textContent = "⧉"; }, 1600);
+  }
+}
+
+function downloadFile(content, type, filename) {
+  const blob = new Blob([content], { type });
+  const anchor = document.createElement("a");
+  anchor.href = URL.createObjectURL(blob);
+  anchor.download = filename;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(anchor.href);
+}
+
+function sharedFilename(extension) {
+  return exportFilename(state).replace(/\.json$/, `.${extension}`);
+}
+
+function exportJson() {
+  downloadFile(JSON.stringify({ ...state, exportedAt: new Date().toISOString() }, null, 2), "application/json", exportFilename(state));
+}
+
+function exportTemplate() {
+  downloadFile(`\uFEFF${buildSheetText(state)}`, "text/plain;charset=utf-8", sharedFilename("txt"));
+}
+
+async function exportHtml() {
+  const sheetText = buildSheetText(state);
+  const title = state.meta.pilotName.trim() || state.meta.machineName.trim() || "無名パイロット";
+  const images = await getEmbeddedImages();
+  downloadFile(buildStandaloneHtml({ title, sheetText, images }), "text/html;charset=utf-8", sharedFilename("html"));
+}
+
+async function exportSelected() {
+  if (exportFormat === "cocofolia") { copyCocofoliaJson(); return; }
+  if (exportFormat === "template") { exportTemplate(); return; }
+  if (exportFormat === "html") {
+    try {
+      await exportHtml();
+    } catch {
+      window.alert("共有用HTMLへ画像を埋め込めませんでした。");
+    }
+    return;
+  }
+  exportJson();
+}
+
+async function handleAction(event) {
+  const button = event.currentTarget;
+  const action = button.dataset.action;
+  if (action === "switch-mode") { mode = button.dataset.mode; render(); return; }
+  if (action === "flip-images") { isImageFlipped = !isImageFlipped; render(); return; }
+  if (action.startsWith("choose-")) { selectCombo(action.replace("choose-", ""), button.dataset.key, button.dataset.id); return; }
+  if (action === "clear-weapon") { state.weapons[Number(button.dataset.index)] = createDefaultState().weapons[0]; saveDraft(); render(); return; }
+  if (action === "add-consumable") { state.consumables.push(createDefaultState().consumables[0]); saveDraft(); render(); return; }
+  if (action === "remove-consumable") { state.consumables.splice(Number(button.dataset.index), 1); saveDraft(); render(); return; }
+  if (action === "remove-image") {
+    try {
+      await removeImage(button.dataset.imageSlot);
+    } catch {
+      window.alert("画像を削除できませんでした。");
+    }
+    return;
+  }
+  if (action === "copy-text") { copyText(); return; }
+  if (action === "export-selected") { await exportSelected(); return; }
+  if (action === "import-json") { importInput.click(); return; }
+  if (action === "new-sheet") {
+    if (window.confirm("現在の下書きを新しい空のシートに置き換えます。JSONを書き出していない内容は戻せません。続けますか？")) {
+      state = createDefaultState();
+      try { await removeAllImages(); } catch { resetImageState(); }
+      saveDraft();
+      mode = "edit";
+      render();
+    }
+  }
+}
+
+importInput.addEventListener("change", async () => {
+  const [file] = importInput.files;
+  if (!file) return;
+  try {
+    state = hydrateState(JSON.parse(await file.text()));
+    try { await removeAllImages(); } catch { resetImageState(); }
+    saveDraft();
+    mode = "edit";
+    render();
+  } catch {
+    window.alert("JSONを読み込めませんでした。A.S.OTRPGキャラクターシートのJSONか確認してください。");
+  } finally {
+    importInput.value = "";
+  }
+});
+
+render();
+
+function wireframeValue(value, fallback = "-") {
+  return value === null || value === undefined || value === "" ? fallback : String(value);
+}
+
+function wireframeSigned(value) {
+  return (value >= 0 ? "+" : "") + value;
+}
+
+function wireframePartModifiers(item, custom) {
+  const labels = { ap: "AP", action: "行動", hit: "命中", evade: "回避", output: "出力", load: "積載", armor: "装甲" };
+  const source = item ? item.modifiers : custom;
+  const values = Object.entries(source ?? {}).filter(([key, value]) => key in labels && value !== "" && Number(value) !== 0);
+  return values.length ? values.map(([key, value]) => labels[key] + wireframeSigned(Number(value))).join(" / ") : "修正なし";
+}
+
+function wireframePartTraits(item, custom) {
+  const source = item ?? custom;
+  return [source?.type, source?.traits].filter(Boolean).join(" / ") || "-";
+}
+
+function wireframePrice(value) {
+  return value === null || value === undefined || value === "" ? "-" : value + "C";
+}
+
+function wireframeCombo({ kind, key, value, placeholder, entries, label, compact = false }) {
+  const keyData = escapeHtml(key);
+  const fieldClass = compact ? "table-combo-field" : "field-wide";
+  const labelClass = compact ? "sr-only" : "";
+  const list = entries.map((entry) => {
+    const labelText = kind === "part"
+      ? entry.company + " / " + SLOT_LABELS[entry.slot] + " / 『" + entry.name + "』"
+      : kind === "weapon"
+        ? entry.company + " / " + CATEGORY_LABELS[entry.category] + " / 【" + entry.type + "】『" + entry.name + "』"
+        : entry.name + " / " + entry.price + "C";
+    return '<button type="button" class="suggestion" data-action="choose-' + kind + '" data-key="' + keyData + '" data-id="' + entry.id + '" data-search="' + escapeHtml(searchText(entry)) + '">' + escapeHtml(labelText) + '</button>';
+  }).join("");
+  return '<div class="combo-wrap ' + (compact ? "table-combo-wrap" : "") + '"><label class="field ' + fieldClass + '"><span class="' + labelClass + '">' + label + '</span><input class="combo-input" autocomplete="off" data-combo-kind="' + kind + '" data-key="' + keyData + '" value="' + escapeHtml(value ?? "") + '" placeholder="' + escapeHtml(placeholder) + '" /></label><div class="suggestions" role="listbox">' + list + '<p class="no-suggestion" hidden>一致するデータはありません。入力内容はカスタム扱いで保存できます。</p></div></div>';
+}
+
+function wireframePartRow(slot) {
+  const entry = getPartEntry(slot);
+  const item = entry.id ? findPart(entry.id) : null;
+  const customDetails = item || !entry.custom.name ? "" : selectedPartInfo(slot);
+  const candidates = parts.filter((candidate) => candidate.slot === slot);
+  const company = item?.company ?? entry.custom.company;
+  const price = item?.price ?? entry.custom.price;
+  return '<tr><th scope="row">' + SLOT_LABELS[slot] + '</th><td class="part-name">' + wireframeCombo({ kind: "part", key: slot, value: partDisplay(slot), label: SLOT_LABELS[slot], placeholder: SLOT_LABELS[slot] + "を検索", entries: candidates, compact: true }) + customDetails + '</td><td>' + escapeHtml(wireframeValue(company)) + '</td><td class="compact">' + escapeHtml(wireframePartModifiers(item, entry.custom)) + '</td><td class="number">' + escapeHtml(wireframePrice(price)) + '</td><td class="traits">' + escapeHtml(wireframePartTraits(item, entry.custom)) + '</td></tr>';
+}
+
+function wireframePartsEditor() {
+  const rows = ["head", "torso", "legs", "generator"].map(wireframePartRow).join("");
+  const body = '<div class="table-wrap"><table class="assemble-table"><thead><tr><th>部位</th><th>パーツ</th><th>企業</th><th>修正</th><th>価格</th><th>タイプ・特性</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  return section("アセンブル", body, { meta: "パーツ名で候補を検索" });
+}
+
+function wireframeWeaponRow(index) {
+  const entry = getWeaponEntry(index);
+  const item = entry.id ? findWeapon(entry.id) : null;
+  const custom = entry.custom;
+  const type = item ? CATEGORY_LABELS[item.category] + " / " + item.type : custom.name ? (CATEGORY_LABELS[custom.category] ?? custom.category) + (custom.type ? " / " + custom.type : "") : "未選択";
+  const power = item ? String(item.power) + (item.damageBonus ? " + " + item.damageBonus : "") : wireframeValue(custom.power);
+  const traits = [item?.attribute ?? custom.attribute, item?.traits ?? custom.traits].filter(Boolean).join(" / ") || "-";
+  const customDetails = item || !custom.name ? "" : selectedWeaponInfo(index);
+  return '<tr><th scope="row">' + (index + 1) + '</th><td class="weapon-name">' + wireframeCombo({ kind: "weapon", key: String(index), value: weaponDisplay(index), label: "武装 " + (index + 1), placeholder: "武装名を検索", entries: weapons, compact: true }) + customDetails + '</td><td class="compact">' + escapeHtml(type) + '</td><td class="number">' + escapeHtml(power) + '</td><td>' + escapeHtml(wireframeValue(item?.range ?? custom.range)) + '</td><td>' + escapeHtml(wireframeValue(item?.output ?? custom.output)) + '</td><td>' + escapeHtml(wireframeValue(item?.weight ?? custom.weight)) + '</td><td class="number">' + escapeHtml(wireframePrice(item?.price ?? custom.price)) + '</td><td class="traits">' + escapeHtml(traits) + '</td><td><button type="button" class="remove-row table-remove" data-action="clear-weapon" data-index="' + index + '" title="この武装枠を空にする" aria-label="武装 ' + (index + 1) + ' を外す">×</button></td></tr>';
+}
+
+function wireframeWeaponEditor(result = calculate(state)) {
+  const rows = state.weapons.map((_, index) => wireframeWeaponRow(index)).join("");
+  const equippedCount = result.weapons.filter(Boolean).length;
+  const restrictedNames = result.weapons.filter((item) => item?.flags?.includes("reduces-light")).map((item) => item.name);
+  const meta = restrictedNames.length
+    ? "武装枠 " + equippedCount + " / " + result.limits.total + "（" + restrictedNames.join("、") + "により追加1枠を消費）"
+    : "武装枠 " + equippedCount + " / " + result.limits.total;
+  const body = '<div class="table-wrap"><table class="weapon-table"><thead><tr><th>#</th><th>武装</th><th>種別</th><th>威力</th><th>射程</th><th>消費</th><th>重量</th><th>価格</th><th>特性</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  return section("武装", body, { meta });
+}
+
+function wireframeIdentity(result) {
+  const pilot = state.meta.pilotName || "未入力";
+  const machine = state.meta.machineName || "機体名未設定";
+  const classesText = "出自: " + result.origin.name + " / メイン: " + (result.mainClass?.name ?? "未選択") + " / サブ: " + (result.subClass?.name ?? "未選択");
+  return '<section class="sheet-identity edit-identity"><div class="portrait-slot" aria-label="A.K.識別枠">A.K.</div><div class="identity-copy"><p class="eyebrow">パイロット</p><h2>' + escapeHtml(pilot) + '</h2><p class="machine-name">' + escapeHtml(machine) + '</p><p class="identity-detail">' + escapeHtml(classesText) + '</p></div></section>';
+}
+
+function wireframeStat(label, value, detail, tone = "") {
+  return '<div class="inline-stat"><dt>' + label + '</dt><dd class="' + tone + '">' + value + '</dd><small>' + detail + '</small></div>';
+}
+
+function wireframeStats(result) {
+  const stats = result.stats;
+  const cards = [
+    wireframeStat("AP", stats.ap, "30 " + wireframeSigned(result.statAdjustments.ap)),
+    wireframeStat("行動値", stats.action, "5 " + wireframeSigned(result.statAdjustments.action)),
+    wireframeStat("命中", stats.hit, "6 " + wireframeSigned(result.statAdjustments.hit)),
+    wireframeStat("回避", stats.evade, "7 " + wireframeSigned(result.statAdjustments.evade)),
+    wireframeStat("出力", stats.output, "4 " + wireframeSigned(result.statAdjustments.output) + " / 回復 " + result.outputRecovery),
+    wireframeStat("装甲", stats.armor, "0 " + wireframeSigned(stats.armor)),
+    wireframeStat("残積載", result.remainingLoad, result.totalWeight + " / " + stats.load, result.remainingLoad < 0 ? "negative" : "teal"),
+    wireframeStat("残金", result.remainingCredits + "C", "購入 " + result.totalCost + "C", result.remainingCredits < 0 ? "negative" : "teal"),
+  ];
+  return '<dl class="inline-stats">' + cards.join("") + '</dl>';
+}
+
+function wireframePersonalClassEditor() {
+  const classChoices = [{ value: "", label: "選択してください" }, ...classes.map((item) => ({ value: item.id, label: item.name }))];
+  const passive = techniqueOptions("パッシブ");
+  const active = techniqueOptions("アクティブ");
+  const originControl = state.origin === "human"
+    ? selectField("人間の補正", "humanBonus", state.humanBonus, [{ value: "hit", label: "命中+1" }, { value: "evade", label: "回避+1" }])
+    : '<div class="field muted-field"><span>出自補正</span><b>行動値+1 / 出力+2</b></div>';
+  const vanguardControl = state.classes.main === "vanguard"
+    ? selectField("ヴァンガード補正", "classes.vanguardBonus", state.classes.vanguardBonus, [{ value: "evade", label: "回避+1" }, { value: "armor", label: "装甲+1" }])
+    : "";
+  const vanguardSlot = vanguardControl || '<div class="build-empty" aria-hidden="true"></div>';
+  const body = '<div class="profile-memo-layout">' +
+    '<div class="personal-column">' +
+      field("パイロット名", "meta.pilotName", state.meta.pilotName, { placeholder: "例: ジョン・ドゥ" }) +
+      field("機体名", "meta.machineName", state.meta.machineName, { placeholder: "例: UNKNOWN:LUCK" }) +
+      field("プレイヤー名", "meta.playerName", state.meta.playerName) +
+    '</div>' +
+    '<div class="memo-column">' +
+      field("メモ", "meta.memo", state.meta.memo, { type: "textarea", rows: 6, wide: true }) +
+    '</div>' +
+  '</div><div class="build-grid">' +
+      selectField("出自", "origin", state.origin, origins.map((item) => ({ value: item.id, label: item.name }))) +
+      originControl +
+      selectField("メインクラス", "classes.main", state.classes.main, classChoices) +
+      selectField("サブクラス", "classes.sub", state.classes.sub, classChoices) +
+      techniqueSelect("パッシブ技巧", "techniques.passive", state.techniques.passive, passive, { wide: false }) +
+      techniqueSelect("アクティブ技巧 1", "techniques.active.0", state.techniques.active[0], active, { wide: false }) +
+      techniqueSelect("アクティブ技巧 2", "techniques.active.1", state.techniques.active[1], active, { wide: false }) +
+      vanguardSlot +
+      techniqueChoiceInputs() +
+  '</div>';
+  return section("パーソナルデータ・クラス", body, { meta: "入力内容は自動保存" });
+}
+
+function wireframeConfirmation(result) {
+  const message = result.warnings.length
+    ? '<ul>' + result.warnings.map((warning) => '<li><b>' + escapeHtml(warning.title) + '</b><span>' + escapeHtml(warning.detail) + '</span></li>').join("") + '</ul>'
+    : '<span>判定上の警告はありません。</span>';
+  const stateClass = result.warnings.length ? "notice warning-notice" : "notice";
+  return '<section class="editor-section confirmation-section"><div class="' + stateClass + '"><strong>確認事項</strong><div>' + message + '</div></div></section>';
+}
+
+function wireframeRenderEdit(result) {
+  return '<main class="app-layout wireframe-layout">' + wireframeIdentity(result) + wireframeStats(result) + '<div class="editor-column">' + wireframePersonalClassEditor() + wireframePartsEditor() + wireframeWeaponEditor(result) + consumableEditor() + wireframeConfirmation(result) + '</div></main>';
+}
+
+function imageEditorSlot(slot, label) {
+  const imageUrl = imageUrls[slot];
+  const fileName = imageRecords[slot]?.name ?? "";
+  const preview = imageUrl
+    ? '<img src="' + escapeHtml(imageUrl) + '" alt="' + label + '">'
+    : '<span class="image-empty">画像未設定</span>';
+  const remove = imageUrl
+    ? '<button type="button" class="image-remove-button" data-action="remove-image" data-image-slot="' + slot + '">画像を外す</button>'
+    : "";
+  return '<article class="image-editor-slot"><div class="image-editor-preview">' + preview + '</div><div class="image-editor-controls"><b>' + label + '</b><small>' + escapeHtml(fileName) + '</small><div><label class="image-upload-button">画像を選択<input type="file" accept="image/*" data-image-upload="' + slot + '"></label>' + remove + '</div></div></article>';
+}
+
+function wireframeImageEditor() {
+  return section("画像", '<div class="image-editor-grid">' + imageEditorSlot("machine", "機体画像") + imageEditorSlot("pilot", "パイロット画像") + '</div>');
+}
+
+const baseWireframeRenderEdit = wireframeRenderEdit;
+const baseRenderView = renderView;
+renderEdit = (result) => baseWireframeRenderEdit(result).replace('<div class="editor-column">', '<div class="editor-column">' + wireframeImageEditor());
+renderView = (result) => {
+  const imageViewer = imageFlipViewer();
+  if (!imageViewer) return baseRenderView(result);
+  return baseRenderView(result).replace('</dl></section>\n    <section class="view-section">', '</dl></section>' + imageViewer + '\n    <section class="view-section">');
+};
+
+combo = wireframeCombo;
+partsEditor = wireframePartsEditor;
+weaponEditor = wireframeWeaponEditor;
+classEditor = wireframePersonalClassEditor;
+renderEdit = (result) => baseWireframeRenderEdit(result).replace('<div class="editor-column">', '<div class="editor-column">' + wireframeImageEditor());
+render();
+void loadStoredImages();
+
+return {  };
+})();
+    </script>
+  </body>
+</html>
