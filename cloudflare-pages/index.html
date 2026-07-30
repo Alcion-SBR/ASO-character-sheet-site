@@ -732,7 +732,7 @@ body {
   </head>
   <body>
     <div id="app"></div>
-    <input id="json-import" type="file" accept="application/json,.json" hidden />
+    <script id="aso-editable-payload" type="application/json"></script>
     <script>
 const dataModule = (() => {
 
@@ -1417,90 +1417,33 @@ return { buildCocofoliaCharacter };
 
 const exporterModule = (() => {
 
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "\"": "&quot;",
-    "'": "&#39;",
-  })[character]);
+function safeJson(value) {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
 }
 
-function sharedImageMarkup(images) {
-  const machineImage = images.machine || "";
-  const pilotImage = images.pilot || "";
-  const frontImage = machineImage || pilotImage;
-  if (!frontImage) return "";
-  const hasPair = Boolean(machineImage && pilotImage);
-  const frontLabel = machineImage ? "機体" : "パイロット";
-  const frontFace = '<div class="image-face image-front"><img src="' + escapeHtml(frontImage) + '" alt="' + frontLabel + '画像"><span>' + frontLabel + '</span></div>';
-  const backFace = hasPair ? '<div class="image-face image-back"><img src="' + escapeHtml(pilotImage) + '" alt="パイロット画像"><span>パイロット</span></div>' : "";
-  const toggle = hasPair ? '<button type="button" class="image-toggle" id="image-toggle" aria-pressed="false">切り替え</button>' : "";
-  return '<section class="image-section"><div class="image-card" id="image-card"><div class="image-inner">' + frontFace + backFace + '</div></div>' + toggle + '</section>';
+function editablePayloadMarkup(payload) {
+  return `<script id="aso-editable-payload" type="application/json">${safeJson(payload)}<\/script>`;
 }
 
-function buildStandaloneHtml({ title, sheetText, images = {}, generatedAt = new Date() }) {
-  const safeTitle = escapeHtml(title || "A.S.OTRPGキャラクターシート");
-  const date = escapeHtml(generatedAt.toLocaleString("ja-JP", { dateStyle: "medium", timeStyle: "short" }));
-  const imageMarkup = sharedImageMarkup(images);
-  return `<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>A.S.OTRPGキャラクターシート | ${safeTitle}</title>
-  <style>
-    :root { --ink: #19212a; --muted: #5f6874; --line: #cbd3db; --accent: #0c66b4; }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: #edf1f4; color: var(--ink); font: 15px/1.6 system-ui, -apple-system, "Yu Gothic UI", "Meiryo", sans-serif; }
-    main { width: min(980px, calc(100% - 32px)); margin: 32px auto; background: #fff; border: 1px solid var(--line); box-shadow: 0 8px 24px rgb(25 33 42 / 10%); }
-    header { padding: 28px 32px 20px; border-bottom: 4px solid var(--accent); }
-    h1 { margin: 0; font-size: 24px; line-height: 1.3; letter-spacing: 0; }
-    p { margin: 8px 0 0; color: var(--muted); } .character { color: var(--accent); font-size: 18px; font-weight: 700; }
-    .image-section { display: flex; align-items: center; gap: 14px; padding: 24px 32px; border-bottom: 1px solid var(--line); }
-    .image-card { width: min(480px, 100%); perspective: 1200px; }
-    .image-inner { position: relative; width: 100%; aspect-ratio: 4 / 3; transform-style: preserve-3d; transition: transform 460ms ease; }
-    .image-card.is-flipped .image-inner { transform: rotateY(180deg); }
-    .image-face { position: absolute; inset: 0; display: grid; overflow: hidden; place-items: center; border: 1px solid var(--line); border-radius: 4px; background: #f5f7f8; backface-visibility: hidden; }
-    .image-face img { width: 100%; height: 100%; object-fit: contain; }
-    .image-face span { position: absolute; right: 8px; bottom: 8px; padding: 2px 6px; background: rgb(255 255 255 / 86%); font-size: 11px; }
-    .image-back { transform: rotateY(180deg); }
-    .image-toggle { min-height: 36px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 4px; background: #fff; color: var(--ink); cursor: pointer; }
-    .image-toggle:hover { border-color: var(--accent); background: #f3f8fd; }
-    section { padding: 24px 32px; } h2 { margin: 0; font-size: 17px; letter-spacing: 0; }
-    pre { margin: 14px 0 0; padding: 16px; overflow-x: auto; background: #202b35; color: #eef5f8; font: 13px/1.55 ui-monospace, "Cascadia Mono", "Meiryo", monospace; white-space: pre-wrap; }
-    footer { padding: 16px 32px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
-    @media (max-width: 680px) { body { background: #fff; } main { width: 100%; margin: 0; border: 0; box-shadow: none; } header, section, footer { padding-left: 16px; padding-right: 16px; } }
-    @media (max-width: 680px) { .image-section { align-items: flex-start; flex-direction: column; padding-right: 16px; padding-left: 16px; } }
-    @media (prefers-reduced-motion: reduce) { .image-inner { transition: none; } }
-    @media print { body { background: #fff; } main { width: 100%; margin: 0; border: 0; box-shadow: none; } }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <p>A.S.OTRPGキャラクターシート / 非公式 / 閲覧専用</p>
-      <h1>アサルト・スティール・オンライン</h1>
-      <p class="character">${safeTitle}</p>
-    </header>
-    ${imageMarkup}
-    <section><h2>キャラクターシート</h2><pre>${escapeHtml(sheetText)}</pre></section>
-    <footer>出力日時: ${date}<br>このHTMLは単体で閲覧できます。再編集にはJSONを使用してください。</footer>
-  </main>
-  <script>
-    const imageCard = document.querySelector("#image-card");
-    const imageToggle = document.querySelector("#image-toggle");
-    if (imageCard && imageToggle) imageToggle.addEventListener("click", () => {
-      const flipped = imageCard.classList.toggle("is-flipped");
-      imageToggle.setAttribute("aria-pressed", String(flipped));
-    });
-  <\/script>
-</body>
-</html>`;
+function buildEditableHtml({ documentHtml, state, images = {}, sheetId, generatedAt = new Date() }) {
+  if (!documentHtml.includes("aso-editable-payload")) throw new Error("Editable HTML template is missing.");
+  const payload = {
+    schemaVersion: 1,
+    sheetId,
+    state: { ...state, exportedAt: generatedAt.toISOString() },
+    images,
+  };
+  const marker = /<script\b(?=[^>]*\bid=["']aso-editable-payload["'])[^>]*>[\s\S]*?<\/script>/i;
+  return documentHtml.replace(marker, editablePayloadMarkup(payload));
 }
 
-return { buildStandaloneHtml };
+
+return { buildEditableHtml };
 })();
 
 const mediaModule = (() => {
@@ -1538,36 +1481,41 @@ function validateSlot(slot) {
   if (!IMAGE_SLOTS.includes(slot)) throw new Error("画像の保存先が不正です。");
 }
 
-async function getStoredImage(slot) {
-  validateSlot(slot);
-  return runRequest("readonly", (store) => store.get(slot));
+function scopedSlot(slot, scope = "") {
+  return scope ? `${scope}:${slot}` : slot;
 }
 
-async function getStoredImages() {
-  const entries = await Promise.all(IMAGE_SLOTS.map(async (slot) => [slot, await getStoredImage(slot)]));
+async function getStoredImage(slot, scope = "") {
+  validateSlot(slot);
+  return runRequest("readonly", (store) => store.get(scopedSlot(slot, scope)));
+}
+
+async function getStoredImages(scope = "") {
+  const entries = await Promise.all(IMAGE_SLOTS.map(async (slot) => [slot, await getStoredImage(slot, scope)]));
   return Object.fromEntries(entries);
 }
 
-async function saveStoredImage(slot, file) {
+async function saveStoredImage(slot, file, scope = "") {
   validateSlot(slot);
   if (!file?.type?.startsWith("image/")) throw new Error("画像ファイルを選択してください。");
   if (file.size > MAX_IMAGE_BYTES) throw new Error("画像は1枚8MB以下にしてください。");
-  const record = { slot, blob: file, name: file.name, type: file.type, updatedAt: new Date().toISOString() };
+  const storageSlot = scopedSlot(slot, scope);
+  const record = { slot: storageSlot, blob: file, name: file.name, type: file.type, updatedAt: new Date().toISOString() };
   await runRequest("readwrite", (store) => store.put(record));
   return record;
 }
 
-async function removeStoredImage(slot) {
+async function removeStoredImage(slot, scope = "") {
   validateSlot(slot);
-  await runRequest("readwrite", (store) => store.delete(slot));
+  await runRequest("readwrite", (store) => store.delete(scopedSlot(slot, scope)));
 }
 
-async function clearStoredImages() {
-  await runRequest("readwrite", (store) => store.clear());
+async function clearStoredImages(scope = "") {
+  await Promise.all(IMAGE_SLOTS.map((slot) => removeStoredImage(slot, scope)));
 }
 
 function imageRecordToUrl(record) {
-  return record?.blob ? URL.createObjectURL(record.blob) : "";
+  return record?.dataUrl || (record?.blob ? URL.createObjectURL(record.blob) : "");
 }
 
 function blobToDataUrl(blob) {
@@ -1579,8 +1527,8 @@ function blobToDataUrl(blob) {
   });
 }
 
-async function getEmbeddedImages() {
-  const images = await getStoredImages();
+async function getEmbeddedImages(scope = "") {
+  const images = await getStoredImages(scope);
   const entries = await Promise.all(IMAGE_SLOTS.map(async (slot) => [slot, images[slot]?.blob ? await blobToDataUrl(images[slot].blob) : ""]));
   return Object.fromEntries(entries);
 }
@@ -1592,25 +1540,45 @@ const appModule = (() => {
 const { BASE_STATS, STARTING_CREDITS, origins, classes, parts, weapons, consumables, SLOT_LABELS, CATEGORY_LABELS, findById, findPart, findWeapon, findConsumable, findClass, findOrigin, allClassTechniques } = dataModule;
 const { createDefaultState, hydrateState, resolvePart, resolveWeapon, resolveConsumable, calculate, buildSheetText, exportFilename, searchText } = logicModule;
 const { buildCocofoliaCharacter } = cocofoliaModule;
-const { buildStandaloneHtml } = exporterModule;
+const { buildEditableHtml } = exporterModule;
 const { getStoredImage, getStoredImages, saveStoredImage, removeStoredImage, clearStoredImages, imageRecordToUrl, getEmbeddedImages } = mediaModule;
 
 const app = document.querySelector("#app");
-const importInput = document.querySelector("#json-import");
-const STORAGE_KEY = "aso-character-sheet-draft-v1";
+const editablePayload = readEditablePayload();
+const imageStorageScope = editablePayload?.sheetId ? `sheet:${editablePayload.sheetId}` : "";
+const STORAGE_KEY = imageStorageScope ? `aso-character-sheet-draft-v1:${imageStorageScope}` : "aso-character-sheet-draft-v1";
+const embeddedImages = editablePayload?.images ?? {};
+const removedImageSlots = new Set();
 let mode = "edit";
-let exportFormat = "json";
+let exportFormat = "html";
 let state = loadDraft();
 let isImageFlipped = false;
 const imageRecords = { machine: null, pilot: null };
 const imageUrls = { machine: "", pilot: "" };
 
+function readEditablePayload() {
+  const payloadElement = document.querySelector("#aso-editable-payload");
+  const text = payloadElement?.textContent?.trim();
+  if (!text) return null;
+  try {
+    const payload = JSON.parse(text);
+    if (!payload || typeof payload !== "object" || !payload.state) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function defaultOrEmbeddedState() {
+  return editablePayload?.state ? hydrateState(editablePayload.state) : createDefaultState();
+}
+
 function loadDraft() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? hydrateState(JSON.parse(saved)) : createDefaultState();
+    return saved ? hydrateState(JSON.parse(saved)) : defaultOrEmbeddedState();
   } catch {
-    return createDefaultState();
+    return defaultOrEmbeddedState();
   }
 }
 
@@ -1627,7 +1595,7 @@ function saveDraft() {
 }
 
 function setImageRecord(slot, record) {
-  if (imageUrls[slot]) URL.revokeObjectURL(imageUrls[slot]);
+  if (imageUrls[slot]?.startsWith("blob:")) URL.revokeObjectURL(imageUrls[slot]);
   imageRecords[slot] = record ?? null;
   imageUrls[slot] = imageRecordToUrl(record);
 }
@@ -1638,33 +1606,44 @@ function resetImageState() {
   isImageFlipped = false;
 }
 
+function embeddedImageRecord(slot) {
+  const dataUrl = embeddedImages[slot];
+  return dataUrl && !removedImageSlots.has(slot) ? { slot, dataUrl, name: "embedded-image" } : null;
+}
+
 async function loadStoredImages() {
   try {
-    const storedImages = await getStoredImages();
-    setImageRecord("machine", storedImages.machine);
-    setImageRecord("pilot", storedImages.pilot);
+    const storedImages = await getStoredImages(imageStorageScope);
+    setImageRecord("machine", storedImages.machine ?? embeddedImageRecord("machine"));
+    setImageRecord("pilot", storedImages.pilot ?? embeddedImageRecord("pilot"));
     render();
   } catch {
-    resetImageState();
+    setImageRecord("machine", embeddedImageRecord("machine"));
+    setImageRecord("pilot", embeddedImageRecord("pilot"));
+    render();
   }
 }
 
 async function replaceImage(slot, file) {
-  const record = await saveStoredImage(slot, file);
+  const record = await saveStoredImage(slot, file, imageStorageScope);
   setImageRecord(slot, record);
+  removedImageSlots.delete(slot);
   isImageFlipped = false;
   render();
 }
 
 async function removeImage(slot) {
-  await removeStoredImage(slot);
+  await removeStoredImage(slot, imageStorageScope);
+  removedImageSlots.add(slot);
   setImageRecord(slot, null);
   isImageFlipped = false;
   render();
 }
 
 async function removeAllImages() {
-  await clearStoredImages();
+  await clearStoredImages(imageStorageScope);
+  removedImageSlots.add("machine");
+  removedImageSlots.add("pilot");
   resetImageState();
 }
 
@@ -1701,8 +1680,7 @@ function header(result) {
         <span id="save-indicator" class="save-indicator">${state.updatedAt ? "下書き保存済み" : "新規下書き"}</span>
         <button class="mode-button ${mode === "edit" ? "active" : ""}" type="button" data-action="switch-mode" data-mode="edit">編集</button>
         <button class="mode-button ${mode === "view" ? "active" : ""}" type="button" data-action="switch-mode" data-mode="view">閲覧</button>
-        <button class="icon-button" type="button" data-action="import-json" title="JSONを読み込む" aria-label="JSONを読み込む">↥</button>
-        <label class="export-picker"><span class="sr-only">書き出し形式</span><select class="export-select" data-export-format aria-label="書き出し形式">${exportFormatOption("template", "テンプレート（.txt）")}${exportFormatOption("html", "共有用HTML（.html）")}${exportFormatOption("json", "JSON（再編集用）")}${exportFormatOption("cocofolia", "ココフォリア用JSON（コピー）")}</select></label>
+        <label class="export-picker"><span class="sr-only">書き出し形式</span><select class="export-select" data-export-format aria-label="書き出し形式">${exportFormatOption("html", "キャラクターHTML（閲覧・再編集）")}${exportFormatOption("template", "テンプレート（.txt）")}${exportFormatOption("cocofolia", "ココフォリア用JSON（コピー）")}</select></label>
         <button class="icon-button" type="button" data-action="export-selected" title="${cocofoliaExport ? "ココフォリア用JSONをコピー" : "選択した形式で書き出す"}" aria-label="${cocofoliaExport ? "ココフォリア用JSONをコピー" : "選択した形式で書き出す"}">${cocofoliaExport ? "⧉" : "↓"}</button>
         <button class="icon-button danger" type="button" data-action="new-sheet" title="新しいシートを作る" aria-label="新しいシートを作る">＋</button>
       </div>
@@ -2001,33 +1979,52 @@ function sharedFilename(extension) {
   return exportFilename(state).replace(/\.json$/, `.${extension}`);
 }
 
-function exportJson() {
-  downloadFile(JSON.stringify({ ...state, exportedAt: new Date().toISOString() }, null, 2), "application/json", exportFilename(state));
-}
 
 function exportTemplate() {
   downloadFile(`\uFEFF${buildSheetText(state)}`, "text/plain;charset=utf-8", sharedFilename("txt"));
 }
 
+function createSheetId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `aso-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function currentStandaloneDocument() {
+  const moduleEntry = document.querySelector('script[type="module"][src]');
+  return moduleEntry ? null : `<!doctype html>\n${document.documentElement.outerHTML}`;
+}
+
+async function editableTemplateDocument() {
+  const currentDocument = currentStandaloneDocument();
+  if (currentDocument) return currentDocument;
+  const response = await fetch("./editable-template.html", { cache: "no-store" });
+  if (!response.ok) throw new Error("編集用HTMLテンプレートを読み込めませんでした。");
+  return response.text();
+}
+
+async function imagesForEditableHtml() {
+  const storedImages = await getEmbeddedImages(imageStorageScope);
+  return {
+    machine: storedImages.machine || (!removedImageSlots.has("machine") ? embeddedImages.machine || imageRecords.machine?.dataUrl || "" : ""),
+    pilot: storedImages.pilot || (!removedImageSlots.has("pilot") ? embeddedImages.pilot || imageRecords.pilot?.dataUrl || "" : ""),
+  };
+}
+
 async function exportHtml() {
-  const sheetText = buildSheetText(state);
-  const title = state.meta.pilotName.trim() || state.meta.machineName.trim() || "無名パイロット";
-  const images = await getEmbeddedImages();
-  downloadFile(buildStandaloneHtml({ title, sheetText, images }), "text/html;charset=utf-8", sharedFilename("html"));
+  const [documentHtml, images] = await Promise.all([editableTemplateDocument(), imagesForEditableHtml()]);
+  const sheetId = editablePayload?.sheetId || createSheetId();
+  const html = buildEditableHtml({ documentHtml, state, images, sheetId });
+  downloadFile(html, "text/html;charset=utf-8", sharedFilename("html"));
 }
 
 async function exportSelected() {
   if (exportFormat === "cocofolia") { copyCocofoliaJson(); return; }
   if (exportFormat === "template") { exportTemplate(); return; }
-  if (exportFormat === "html") {
-    try {
-      await exportHtml();
-    } catch {
-      window.alert("共有用HTMLへ画像を埋め込めませんでした。");
-    }
-    return;
+  try {
+    await exportHtml();
+  } catch {
+    window.alert("キャラクターHTMLを書き出せませんでした。");
   }
-  exportJson();
 }
 
 async function handleAction(event) {
@@ -2049,9 +2046,8 @@ async function handleAction(event) {
   }
   if (action === "copy-text") { copyText(); return; }
   if (action === "export-selected") { await exportSelected(); return; }
-  if (action === "import-json") { importInput.click(); return; }
   if (action === "new-sheet") {
-    if (window.confirm("現在の下書きを新しい空のシートに置き換えます。JSONを書き出していない内容は戻せません。続けますか？")) {
+    if (window.confirm("現在の下書きを新しい空のシートに置き換えます。HTMLを書き出していない内容は戻せません。続けますか？")) {
       state = createDefaultState();
       try { await removeAllImages(); } catch { resetImageState(); }
       saveDraft();
@@ -2061,21 +2057,6 @@ async function handleAction(event) {
   }
 }
 
-importInput.addEventListener("change", async () => {
-  const [file] = importInput.files;
-  if (!file) return;
-  try {
-    state = hydrateState(JSON.parse(await file.text()));
-    try { await removeAllImages(); } catch { resetImageState(); }
-    saveDraft();
-    mode = "edit";
-    render();
-  } catch {
-    window.alert("JSONを読み込めませんでした。A.S.OTRPGキャラクターシートのJSONか確認してください。");
-  } finally {
-    importInput.value = "";
-  }
-});
 
 render();
 

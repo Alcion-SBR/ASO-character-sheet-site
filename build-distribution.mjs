@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = dirname(fileURLToPath(import.meta.url));
 const outputName = "A.S.OTRPGキャラクターシート配布版.html";
 const pagesDirectory = join(root, "cloudflare-pages");
+const editableTemplateName = "editable-template.html";
 
 const read = (name) => readFile(join(root, name), "utf8");
 const exportNames = (source) => [...source.matchAll(/\bexport\s+(?:async\s+)?(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/g)].map((match) => match[1]);
@@ -59,7 +60,7 @@ ${wireframeStyles}
   </head>
   <body>
     <div id="app"></div>
-    <input id="json-import" type="file" accept="application/json,.json" hidden />
+    <script id="aso-editable-payload" type="application/json"></script>
     <script>
 ${safeInlineScript(modules)}
     </script>
@@ -70,4 +71,6 @@ ${safeInlineScript(modules)}
 await writeFile(join(root, outputName), output, "utf8");
 await mkdir(pagesDirectory, { recursive: true });
 await writeFile(join(pagesDirectory, "index.html"), output, "utf8");
-console.log(`Generated ${outputName} and cloudflare-pages/index.html`);
+await writeFile(join(root, editableTemplateName), output, "utf8");
+await writeFile(join(pagesDirectory, editableTemplateName), output, "utf8");
+console.log(`Generated ${outputName}, ${editableTemplateName}, and cloudflare-pages assets`);

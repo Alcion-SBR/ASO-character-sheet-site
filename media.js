@@ -31,36 +31,41 @@ function validateSlot(slot) {
   if (!IMAGE_SLOTS.includes(slot)) throw new Error("画像の保存先が不正です。");
 }
 
-export async function getStoredImage(slot) {
-  validateSlot(slot);
-  return runRequest("readonly", (store) => store.get(slot));
+function scopedSlot(slot, scope = "") {
+  return scope ? `${scope}:${slot}` : slot;
 }
 
-export async function getStoredImages() {
-  const entries = await Promise.all(IMAGE_SLOTS.map(async (slot) => [slot, await getStoredImage(slot)]));
+export async function getStoredImage(slot, scope = "") {
+  validateSlot(slot);
+  return runRequest("readonly", (store) => store.get(scopedSlot(slot, scope)));
+}
+
+export async function getStoredImages(scope = "") {
+  const entries = await Promise.all(IMAGE_SLOTS.map(async (slot) => [slot, await getStoredImage(slot, scope)]));
   return Object.fromEntries(entries);
 }
 
-export async function saveStoredImage(slot, file) {
+export async function saveStoredImage(slot, file, scope = "") {
   validateSlot(slot);
   if (!file?.type?.startsWith("image/")) throw new Error("画像ファイルを選択してください。");
   if (file.size > MAX_IMAGE_BYTES) throw new Error("画像は1枚8MB以下にしてください。");
-  const record = { slot, blob: file, name: file.name, type: file.type, updatedAt: new Date().toISOString() };
+  const storageSlot = scopedSlot(slot, scope);
+  const record = { slot: storageSlot, blob: file, name: file.name, type: file.type, updatedAt: new Date().toISOString() };
   await runRequest("readwrite", (store) => store.put(record));
   return record;
 }
 
-export async function removeStoredImage(slot) {
+export async function removeStoredImage(slot, scope = "") {
   validateSlot(slot);
-  await runRequest("readwrite", (store) => store.delete(slot));
+  await runRequest("readwrite", (store) => store.delete(scopedSlot(slot, scope)));
 }
 
-export async function clearStoredImages() {
-  await runRequest("readwrite", (store) => store.clear());
+export async function clearStoredImages(scope = "") {
+  await Promise.all(IMAGE_SLOTS.map((slot) => removeStoredImage(slot, scope)));
 }
 
 export function imageRecordToUrl(record) {
-  return record?.blob ? URL.createObjectURL(record.blob) : "";
+  return record?.dataUrl || (record?.blob ? URL.createObjectURL(record.blob) : "");
 }
 
 function blobToDataUrl(blob) {
@@ -72,8 +77,8 @@ function blobToDataUrl(blob) {
   });
 }
 
-export async function getEmbeddedImages() {
-  const images = await getStoredImages();
+export async function getEmbeddedImages(scope = "") {
+  const images = await getStoredImages(scope);
   const entries = await Promise.all(IMAGE_SLOTS.map(async (slot) => [slot, images[slot]?.blob ? await blobToDataUrl(images[slot].blob) : ""]));
   return Object.fromEntries(entries);
 }

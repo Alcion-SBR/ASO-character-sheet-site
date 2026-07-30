@@ -1,37 +1,44 @@
 # A.S.OTRPGキャラクターシート MVP
 
-TRPG『アサルト・スティール・オンライン』用の、ローカル利用を前提にしたキャラクターシートです。
+TRPG『アサルト・スティール・オンライン』用の、非公式キャラクターシートです。ブラウザだけで入力・計算・保存できます。
 
 ## 使い方
 
-`index.html` をローカルWebサーバー経由で開きます。外部通信やアカウント登録は不要です。
-
 - 編集モード: キャラクター、機体、武装、技巧、消耗品を入力します。
-- 閲覧モード: 入力内容を既存テンプレートに沿って確認します。
-- 下書き: 同じブラウザ内に自動保存されます。
-- 書き出し: ヘッダーの形式選択から、再編集用JSON、提出・貼り付け用テンプレートテキスト、Discord等で配布できる閲覧用HTMLを保存できます。ココフォリア用JSONはコピーして貼り付けます。
-- JSON: 明示的なエクスポートとインポートで、別の環境へ持ち出せます。
+- 閲覧モード: 同じ内容をテンプレート形式で確認します。
+- 下書き: 入力内容は同じブラウザ内に自動保存されます。
+- 画像: 機体用・パイロット用を各1枚登録できます。閲覧モードでは「切り替え」で表裏表示します。
+- 書き出し: ヘッダーの形式選択から、以下を利用できます。
+  - `キャラクターHTML（閲覧・再編集）`: キャラクター情報、画像、ルールデータ、編集画面を1ファイルにまとめます。受け取った人もブラウザで開いて閲覧・再編集できます。
+  - `テンプレート（.txt）`: 提出・貼り付け用のテキストです。
+  - `ココフォリア用JSON（コピー）`: ココフォリアに貼り付けるデータをクリップボードへコピーします。
 
-## Discordで編集サイトを配る
+キャラクターHTMLを編集した後は、同じ書き出しをもう一度行って新しいHTMLを共有します。ブラウザは開いたローカルファイルを直接上書きできないためです。
 
-`node build-distribution.mjs` を実行すると、`A.S.OTRPGキャラクターシート配布版.html` が作成されます。
-このHTMLは、編集機能・ルールデータ・見た目を1ファイルにまとめた配布版です。Discordにはこのファイルだけを添付してください。受け取った人はダウンロードしてブラウザで開けば使えます。
+## 配布用HTMLを作る
 
-- 同じファイルを再度開くと、そのブラウザ内の下書きと画像が保持されます。一部のブラウザでローカルHTMLの自動保存が拒否された場合でも、編集・計算・JSON書き出しは利用できます。
-- 別の端末で続きを編集する場合は、再編集用JSONも一緒に渡します。
-- キャラクターごとの閲覧専用HTMLは、アプリ内の「共有用HTML（.html）」から別途出力します。
+```powershell
+node build-distribution.mjs
+```
 
-## Cloudflare Pagesで公開する
+実行すると、次のファイルが更新されます。
 
-`node build-distribution.mjs` を実行すると、`cloudflare-pages/index.html` も作成されます。このフォルダはCloudflare Pagesへそのままアップロードする公開用フォルダです。
+- `A.S.OTRPGキャラクターシート配布版.html`: ローカル配布用の編集アプリです。DiscordにはこのHTMLだけを添付すれば使えます。
+- `editable-template.html`: キャラクターHTMLの書き出しに使うテンプレートです。
+- `cloudflare-pages/index.html` と `cloudflare-pages/editable-template.html`: 公開サイト用の成果物です。
 
-1. Cloudflareへ無料アカウントでログインする。
-2. `Workers & Pages` から `Create application` を選び、`Get started` の `Drag and drop your files` を選ぶ。
-3. プロジェクト名を入力する。公開URLは `<プロジェクト名>.pages.dev` になる。
-4. `cloudflare-pages` フォルダをアップロードし、`Deploy site` を選ぶ。
-5. 更新時はこのビルドを再実行し、Cloudflare Pagesの `Create a new deployment` から同じフォルダを再アップロードする。
+## 公開サイトの更新
 
-ドラッグ&ドロップで作成したPagesプロジェクトは、あとからGit連携へ切り替えられない。自動公開が必要になった場合は、Git連携用に別のPagesプロジェクトを作る。
+現在のCloudflare WorkerプロジェクトはGit連携済みです。更新時はローカルでビルドした成果物も含めて `main` へpushします。
+
+```powershell
+node build-distribution.mjs
+git add app.js exporter.js media.js index.html build-distribution.mjs tests.mjs README.md editable-template.html A.S.OTRPGキャラクターシート配布版.html cloudflare-pages
+git commit -m "更新内容"
+git push origin main
+```
+
+push後、Cloudflareダッシュボードの `aso-character-sheet-site` プロジェクトで `デプロイ` を開き、最新の `main` ビルドが成功したことを確認します。成功すれば、公開URL [aso-character-sheet-site.alcion.workers.dev](https://aso-character-sheet-site.alcion.workers.dev/) に自動反映されます。手動アップロードは不要です。
 
 ## ルールデータの扱い
 

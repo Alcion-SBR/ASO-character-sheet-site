@@ -1,5 +1,5 @@
 import { calculate, createDefaultState, exportFilename, hydrateState } from "./logic.js";
-import { buildStandaloneHtml } from "./exporter.js";
+import { buildEditableHtml } from "./exporter.js";
 import { buildCocofoliaCharacter } from "./cocofolia.js";
 
 function assert(condition, message) {
@@ -84,23 +84,26 @@ function exampleState() {
 
 {
   const filename = exportFilename(exampleState(), new Date("2026-07-29T00:00:00+09:00"));
-  assert(filename === "ジョン・ドゥ_20260729.json", "JSONファイル名");
+  assert(filename === "ジョン・ドゥ_20260729.json", "内部の基本ファイル名");
 }
 
 {
-  const html = buildStandaloneHtml({ title: "ジョン・ドゥ", sheetText: "<確認用テンプレート>", generatedAt: new Date("2026-07-29T00:00:00+09:00") });
-  assert(html.includes("ジョン・ドゥ"), "共有HTMLのキャラクター名");
-  assert(html.includes("&lt;確認用テンプレート&gt;"), "共有HTMLのテンプレートをエスケープ");
-  assert(html.includes("再編集にはJSONを使用してください"), "共有HTMLの再編集案内");
-  const imageHtml = buildStandaloneHtml({
-    title: "画像テスト",
-    sheetText: "画像あり",
-    images: { machine: "data:image/png;base64,bWFjaGluZQ==", pilot: "data:image/png;base64,cGlsb3Q=" },
-    generatedAt: new Date("2026-07-29T00:00:00+09:00"),
+  const state = exampleState();
+  state.meta.memo = "</script><b>safe</b>";
+  const template = '<!doctype html><html><body><script id="aso-editable-payload" type="application/json"></script><script>window.app = true;</script></body></html>';
+  const editableHtml = buildEditableHtml({
+    documentHtml: template,
+    state,
+    images: { machine: "data:image/png;base64,bWFjaGluZQ==", pilot: "" },
+    sheetId: "sheet-test",
+    generatedAt: new Date("2026-07-30T00:00:00+09:00"),
   });
-  assert(imageHtml.includes("data:image/png;base64,bWFjaGluZQ=="), "共有HTMLへ機体画像を埋め込み");
-  assert(imageHtml.includes("data:image/png;base64,cGlsb3Q="), "共有HTMLへパイロット画像を埋め込み");
-  assert(imageHtml.includes("image-toggle"), "共有HTMLへ画像切替操作を埋め込み");
+  const payloadMatch = editableHtml.match(/id="aso-editable-payload" type="application\/json">([\s\S]*?)<\/script>/);
+  assert(payloadMatch, "editable HTML payload exists");
+  const payload = JSON.parse(payloadMatch[1]);
+  assert(payload.sheetId === "sheet-test", "editable HTML keeps its sheet id");
+  assert(payload.state.meta.memo === "</script><b>safe</b>", "editable HTML safely stores character data");
+  assert(payload.images.machine === "data:image/png;base64,bWFjaGluZQ==", "editable HTML embeds images");
 }
 
 {
