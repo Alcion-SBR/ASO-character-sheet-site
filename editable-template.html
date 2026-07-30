@@ -1894,6 +1894,13 @@ function selectCombo(kind, key, id) {
   render();
 }
 
+function chooseComboButton(button) {
+  const action = button.dataset.action ?? "";
+  if (!action.startsWith("choose-")) return false;
+  selectCombo(action.replace("choose-", ""), button.dataset.key, button.dataset.id);
+  return true;
+}
+
 function bindEvents() {
   document.querySelectorAll("[data-path]").forEach((element) => {
     const apply = () => {
@@ -1907,8 +1914,19 @@ function bindEvents() {
   document.querySelectorAll("[data-combo-kind]").forEach((input) => {
     input.addEventListener("input", () => { updateComboCustom(input.dataset.comboKind, input.dataset.key, input.value); updateComboSuggestions(input); });
     input.addEventListener("focus", () => updateComboSuggestions(input));
+    input.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      const firstVisibleSuggestion = [...input.closest(".combo-wrap").querySelectorAll(".suggestion")].find((button) => !button.hidden);
+      if (!firstVisibleSuggestion) return;
+      event.preventDefault();
+      chooseComboButton(firstVisibleSuggestion);
+    });
     input.addEventListener("blur", () => window.setTimeout(() => input.closest(".combo-wrap")?.classList.remove("is-open"), 120));
   });
+  document.querySelectorAll(".suggestion").forEach((button) => button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    chooseComboButton(button);
+  }));
   document.querySelectorAll("[data-export-format]").forEach((select) => select.addEventListener("change", () => { exportFormat = select.value; render(); }));
   document.querySelectorAll("[data-image-upload]").forEach((input) => input.addEventListener("change", async () => {
     const [file] = input.files ?? [];
@@ -2031,7 +2049,7 @@ async function handleAction(event) {
   const action = button.dataset.action;
   if (action === "switch-mode") { mode = button.dataset.mode; render(); return; }
   if (action === "flip-images") { isImageFlipped = !isImageFlipped; render(); return; }
-  if (action.startsWith("choose-")) { selectCombo(action.replace("choose-", ""), button.dataset.key, button.dataset.id); return; }
+  if (action.startsWith("choose-")) { chooseComboButton(button); return; }
   if (action === "clear-weapon") { state.weapons[Number(button.dataset.index)] = createDefaultState().weapons[0]; saveDraft(); render(); return; }
   if (action === "add-consumable") { state.consumables.push(createDefaultState().consumables[0]); saveDraft(); render(); return; }
   if (action === "remove-consumable") { state.consumables.splice(Number(button.dataset.index), 1); saveDraft(); render(); return; }
